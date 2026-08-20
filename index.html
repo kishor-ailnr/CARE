@@ -267,19 +267,87 @@
     }
 
     @media (max-width: 860px) {
+      body {
+        padding: 1rem 0.6rem;
+        justify-content: flex-start;
+        min-height: 100vh;
+      }
+
       .login-split-card {
         grid-template-columns: 1fr;
         max-width: 460px;
+        width: 100%;
         border-radius: 28px;
+        min-height: auto;
+        margin: 0.5rem auto;
       }
 
       .login-hero-pane {
-        padding: 2.2rem 1.8rem;
-        min-height: 260px;
+        padding: 1.8rem 1.5rem 1.2rem;
+        min-height: auto;
+        border-top-left-radius: 28px;
+        border-top-right-radius: 28px;
+        border-bottom-left-radius: 0;
+      }
+
+      .login-hero-pane .pedestal-wrap {
+        transform: scale(0.85);
+        transform-origin: center;
+        margin-top: 0.5rem !important;
+        padding-top: 0.8rem !important;
       }
 
       .login-form-pane {
-        padding: 2.2rem 1.8rem;
+        padding: 1.8rem 1.5rem;
+        border-bottom-left-radius: 28px;
+        border-bottom-right-radius: 28px;
+        border-top-right-radius: 0;
+      }
+
+      .form-input {
+        font-size: 16px; /* Prevents auto-zoom on mobile iOS/Android */
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 0.5rem;
+      }
+
+      .login-split-card {
+        border-radius: 22px;
+        max-width: 100%;
+      }
+
+      .login-hero-pane {
+        padding: 1.4rem 1.2rem 0.8rem;
+        border-top-left-radius: 22px;
+        border-top-right-radius: 22px;
+      }
+
+      .login-hero-pane p {
+        font-size: 0.98rem !important;
+      }
+
+      .login-hero-pane .pedestal-wrap {
+        transform: scale(0.72);
+        margin-top: 0 !important;
+        padding-top: 0.4rem !important;
+      }
+
+      .login-form-pane {
+        padding: 1.4rem 1.2rem;
+        border-bottom-left-radius: 22px;
+        border-bottom-right-radius: 22px;
+      }
+
+      #login-portal-title {
+        font-size: 1.35rem !important;
+      }
+
+      .role-tab {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.3rem;
       }
     }
   </style>
@@ -389,7 +457,7 @@
       </div>
 
       <!-- 3D Pedestal with Stethoscope Illustration -->
-      <div
+      <div class="pedestal-wrap"
         style="position: relative; display: flex; align-items: center; justify-content: center; margin-top: auto; padding-top: 2rem; z-index: 10;">
         <!-- 3D Pedestal Base -->
         <div

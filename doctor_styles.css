@@ -727,26 +727,115 @@ body {
 
 /* Glass Card Centered Container (for Screens) */
 .glass-card {
-  width: 90%;
+  width: 100%;
   max-width: 960px;
-  margin: 2rem auto;
+  margin: 1.5rem auto;
   border-radius: 32px;
   box-shadow: 0 20px 50px rgba(100, 116, 139, 0.18);
+  box-sizing: border-box;
 }
 
+/* ------------------------------------------------------------------ */
+/* Responsive Design for Tablets & Mobile Phones (360px - 860px)      */
+/* ------------------------------------------------------------------ */
 @media (max-width: 860px) {
-  .login-split-card {
+  .doctor-container {
+    width: 100% !important;
+    padding: 0.8rem 0.5rem !important;
+    box-sizing: border-box;
+  }
+
+  .doctor-top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .doctor-stats-bar {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+
+  .search-filter-wrap {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .patient-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Patient Detail AI Intelligence Dashboard Responsiveness */
+  .patient-detail-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+    padding: 1.2rem;
+  }
+
+  .patient-detail-avatar {
+    margin: 0 auto;
+  }
+
+  .risk-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  .chart-box {
+    padding: 1rem 0.8rem;
+    min-height: 240px;
+  }
+
+  .digital-twin-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem;
+  }
+
+  .scenario-card {
+    padding: 1rem;
+  }
+
+  .shap-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .shap-bar-container {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .doctor-stats-bar {
     grid-template-columns: 1fr;
-    max-width: 480px;
-    margin: 1.5rem auto;
-    border-radius: 28px;
+    gap: 0.6rem;
   }
-  .login-hero-pane {
-    padding: 2.2rem 1.8rem;
-    min-height: 280px;
+
+  .stat-card {
+    padding: 0.8rem 1rem;
   }
-  .login-form-pane {
-    padding: 2.2rem 1.8rem;
+
+  .doctor-title {
+    font-size: 1.3rem;
+  }
+
+  .doctor-sub {
+    font-size: 0.8rem;
+  }
+
+  .btn-doctor-primary, .btn-doctor-secondary {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
   }
 }
 
