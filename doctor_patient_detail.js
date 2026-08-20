@@ -1006,10 +1006,20 @@ window.renderPatientDetailInline = async function(patientId) {
         renderChartsForCategory(catKey);
     };
 
+    window._activeDoctorCharts = window._activeDoctorCharts || [];
+
     // Render Charts
     const renderChartsForCategory = (catKey) => {
         const wrapper = document.getElementById('category-charts-wrapper');
         if (!wrapper) return;
+
+        if (window._activeDoctorCharts && window._activeDoctorCharts.length > 0) {
+            window._activeDoctorCharts.forEach(c => {
+                try { c.destroy(); } catch (e) {}
+            });
+            window._activeDoctorCharts = [];
+        }
+
         wrapper.innerHTML = '';
 
         const conf = CATEGORIES[catKey];
@@ -1032,7 +1042,7 @@ window.renderPatientDetailInline = async function(patientId) {
 
             const canvasId = `chart-canvas-${typeKey.replace(/[^a-zA-Z0-9]/g, '-')}`;
             const card = document.createElement('div');
-            card.style.cssText = 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.2rem; margin-bottom: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.03);';
+            card.style.cssText = 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.2rem; margin-bottom: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; min-width: 0;';
 
             const firstVal = parseFloat(points[0].value) || 0;
             const lastVal = parseFloat(points[points.length - 1].value) || 0;
@@ -1042,7 +1052,7 @@ window.renderPatientDetailInline = async function(patientId) {
             const trendLabel = delta === 0 ? 'stable' : (delta > 0 ? `+${delta.toFixed(1)}, increasing` : `${delta.toFixed(1)}, decreasing`);
 
             card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.4rem;">
                     <div style="font-weight: 700; font-size: 1rem; color: #0f172a; text-transform: uppercase;">
                         ${typeKey.replace(/_/g, ' ')}
                     </div>
@@ -1050,7 +1060,7 @@ window.renderPatientDetailInline = async function(patientId) {
                         ${firstVal.toFixed(1)} → ${lastVal.toFixed(1)} (${trendLabel})
                     </div>
                 </div>
-                <div style="position: relative; height: 200px; width: 100%;">
+                <div style="position: relative; height: 200px; width: 100%; max-width: 100%; min-width: 0; overflow: hidden;">
                     <canvas id="${canvasId}"></canvas>
                 </div>
             `;
@@ -1073,7 +1083,7 @@ window.renderPatientDetailInline = async function(patientId) {
                 gradient.addColorStop(0, 'rgba(2, 132, 199, 0.22)');
                 gradient.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
 
-                new Chart(ctx, {
+                const chartInst = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: labels,
@@ -1095,7 +1105,8 @@ window.renderPatientDetailInline = async function(patientId) {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        resizeDelay: 50,
+                        animation: { duration: 600, easing: 'easeOutQuart' },
                         plugins: {
                             legend: { display: false },
                             tooltip: {
