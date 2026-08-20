@@ -1,0 +1,24 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Databases & large files (>100MB GitHub limit)
+*.db
+*.db-shm
+*.db-wal
+care.db
+data/synthea_output/
+data/*.json
+
+# OS / Editor files
+.DS_Store
+.vscode/
+.idea/

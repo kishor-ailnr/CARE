@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARE — Sign In</title>
+
+  <!-- PWA Manifest & Theme -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b0f1f" />
+  <meta name="description"
+    content="CARE: Community-based Automated Risk Engine for ASHA workers and clinical doctors." />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%230b0f1f'/><path d='M256 448l-30.165-27.211C118.718 323.588 48 259.488 48 179.805 48 114.475 99.475 63 164.805 63c36.877 0 72.269 17.155 95.195 44.209C282.926 80.155 318.318 63 355.195 63 420.525 63 472 114.475 472 179.805c0 79.683-70.718 143.783-177.835 241.084L256 448z' fill='%2300D9C0'/></svg>" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f1f5f9 url('bg-silk.png') no-repeat center center fixed !important;
+      background-size: cover !important;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      color: #334155;
+    }
+
+    @keyframes subtleFloat {
+
+      0%,
+      100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+
+      50% {
+        transform: translateY(-8px) rotate(-1.5deg);
+      }
+    }
+
+    @keyframes floatCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(22px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Exact Split-Card Container Matching Reference UI                  */
+    /* ------------------------------------------------------------------ */
+    .login-split-card {
+      width: 100%;
+      max-width: 900px;
+      min-height: 520px;
+      background: #ffffff;
+      border-radius: 36px;
+      box-shadow: 0 25px 60px rgba(100, 116, 139, 0.22), 0 6px 20px rgba(0, 0, 0, 0.04);
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      overflow: hidden;
+      position: relative;
+      animation: floatCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      margin: auto;
+    }
+
+    /* Left Hero Pane */
+    .login-hero-pane {
+      background: #bccbf5;
+      padding: 2.8rem 2.4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-hero-pane::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      left: -50px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      pointer-events: none;
+    }
+
+    .login-hero-pane::after {
+      content: '';
+      position: absolute;
+      bottom: -40px;
+      right: -40px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.25);
+      pointer-events: none;
+    }
+
+    /* Right Form Pane */
+    .login-form-pane {
+      background: #ffffff;
+      padding: 2.8rem 3.2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Role Tabs */
+    #role-tabs {
+      display: flex;
+      gap: 0;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1.5px solid #cbd5e1;
+      margin-bottom: 1.2rem;
+      background: #f8fafc;
+    }
+
+    .role-tab {
+      flex: 1;
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      background: transparent;
+      color: #64748b;
+    }
+
+    .role-tab.active-asha {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 2px 8px rgba(148, 163, 184, 0.2);
+    }
+
+    .role-tab.active-doctor {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 2px 8px rgba(148, 163, 184, 0.2);
+    }
+
+    .role-tab:hover:not(.active-asha):not(.active-doctor) {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    #login-portal-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      margin-bottom: 0.4rem;
+      transition: all 0.3s;
+    }
+
+    .badge-asha {
+      background: #f0fdfa;
+      color: #0d9488;
+      border: 1px solid #99f6e4;
+    }
+
+    .badge-doctor {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      width: 100%;
+    }
+
+    .form-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.6rem;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 20px;
+      color: #0f172a;
+      font-size: 0.95rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: #5468E7;
+      background: #ffffff;
+    }
+
+    .btn-submit {
+      margin-top: 0.6rem;
+      width: 100%;
+      height: 48px;
+      background: #5468E7;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(84, 104, 231, 0.35);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-submit:hover {
+      background: #4355d6;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(84, 104, 231, 0.45);
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.8rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 860px) {
+      .login-split-card {
+        grid-template-columns: 1fr;
+        max-width: 460px;
+        border-radius: 28px;
+      }
+
+      .login-hero-pane {
+        padding: 2.2rem 1.8rem;
+        min-height: 260px;
+      }
+
+      .login-form-pane {
+        padding: 2.2rem 1.8rem;
+      }
+    }
+  </style>
+
+  <script>
+    var API_BASE_URL = window.API_BASE_URL || ((window.location.origin && window.location.origin !== "null" && !window.location.origin.startsWith("file:"))
+      ? window.location.origin
+      : "http://127.0.0.1:8000");
+
+    let _selectedRole = 'asha';
+
+    function switchRoleTab(role) {
+      _selectedRole = role;
+      const tabAsha = document.getElementById('tab-asha');
+      const tabDoc = document.getElementById('tab-doctor');
+      const badge = document.getElementById('login-portal-badge');
+      const title = document.getElementById('login-portal-title');
+      const sub = document.getElementById('login-portal-sub');
+      const uLabel = document.getElementById('lbl-username');
+      const uInput = document.getElementById('login-username');
+      const pInput = document.getElementById('login-password');
+      const sBtn = document.getElementById('login-submit-btn');
+      const delegateWrap = document.getElementById('delegate-link-wrap');
+
+      if (role === 'doctor') {
+        tabAsha.className = 'role-tab';
+        tabDoc.className = 'role-tab active-doctor';
+        badge.className = 'badge-doctor';
+        badge.textContent = 'DOCTOR CLINICAL PORTAL';
+        title.textContent = 'Doctor Sign In';
+        sub.textContent = 'Access full clinical AI predictions & patient records';
+        uLabel.textContent = 'Doctor Username';
+        uInput.value = 'doctor1';
+        pInput.value = 'doctor123';
+        sBtn.textContent = 'Doctor Sign In ➔';
+        if (delegateWrap) delegateWrap.classList.remove('hidden');
+      } else {
+        tabAsha.className = 'role-tab active-asha';
+        tabDoc.className = 'role-tab';
+        badge.className = 'badge-asha';
+        badge.textContent = 'ASHA WORKER PORTAL';
+        title.textContent = 'ASHA Worker Sign In';
+        sub.textContent = 'Enter field credentials to record observations & patient vitals';
+        uLabel.textContent = 'ASHA Worker Username';
+        uInput.value = 'asha1';
+        pInput.value = 'asha123';
+        sBtn.textContent = 'Sign In ➔';
+        if (delegateWrap) delegateWrap.classList.add('hidden');
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) icon.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        if (icon) icon.textContent = '👁️';
+      }
+    }
+
+    // Auto-redirect if already logged in
+    (function checkSession() {
+      const token = localStorage.getItem('care_access_token');
+      const role = localStorage.getItem('care_role');
+      if (token) {
+        if (role === 'doctor') {
+          window.location.href = 'doctor.html';
+        } else if (role === 'asha_worker') {
+          window.location.href = 'asha.html';
+        }
+      }
+    })();
+  </script>
+</head>
+
+<body>
+
+  <!-- FLOATING SPLIT-CARD (MATCHING EXACT REFERENCE DESIGN) -->
+  <div class="login-split-card">
+
+    <!-- Left Hero Pane -->
+    <div class="login-hero-pane">
+      <!-- Top App Device Badge -->
+      <div style="display: flex; align-items: center; gap: 0.8rem; z-index: 10;">
+        <div
+          style="width: 44px; height: 44px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 1.3rem;">
+          📱
+        </div>
+        <div>
+          <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; color: #1e1b4b;">CARE AI</div>
+          <div
+            style="font-size: 0.72rem; font-weight: 600; color: #312e81; text-transform: uppercase; letter-spacing: 0.05em;">
+            Clinical Platform</div>
+        </div>
+      </div>
+
+      <!-- Tagline & Quote -->
+      <div style="margin: 1.5rem 0 1rem; z-index: 10;">
+        <p
+          style="font-size: 1.12rem; font-weight: 600; line-height: 1.6; color: #1e1b4b; text-shadow: 0 1px 2px rgba(255,255,255,0.4); font-family: 'Poppins', sans-serif;">
+          "We at <strong>CARE</strong> are always fully focused on early risk prediction and community health."
+        </p>
+      </div>
+
+      <!-- 3D Pedestal with Stethoscope Illustration -->
+      <div
+        style="position: relative; display: flex; align-items: center; justify-content: center; margin-top: auto; padding-top: 2rem; z-index: 10;">
+        <!-- 3D Pedestal Base -->
+        <div
+          style="position: relative; width: 230px; height: 95px; background: #687de8; border-radius: 50%; box-shadow: 0 20px 30px rgba(49, 46, 129, 0.35); display: flex; align-items: center; justify-content: center;">
+          <div
+            style="position: absolute; top: -16px; width: 230px; height: 90px; background: #8da0f5; border-radius: 50%; border: 3px solid #b3c2fc; display: flex; align-items: center; justify-content: center;">
+            <!-- 3D Stethoscope Visual Icon -->
+            <div
+              style="position: absolute; top: -78px; font-size: 5.6rem; filter: drop-shadow(0 15px 12px rgba(30, 27, 75, 0.45)); animation: subtleFloat 3s ease-in-out infinite;">
+              🩺
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Form Pane -->
+    <div class="login-form-pane">
+      <!-- Top header meta -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+        <div id="login-portal-badge" class="badge-asha">ASHA WORKER PORTAL</div>
+        <div
+          style="font-size: 0.8rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem;">
+          <span>🌐</span> English (US) ▾
+        </div>
+      </div>
+
+      <!-- Role Tabs Switcher -->
+      <div id="role-tabs">
+        <button class="role-tab active-asha" id="tab-asha" type="button" onclick="switchRoleTab('asha')">
+          🌿 ASHA Worker
+        </button>
+        <button class="role-tab" id="tab-doctor" type="button" onclick="switchRoleTab('doctor')">
+          🩺 Doctor / Clinician
+        </button>
+      </div>
+
+      <!-- Screen title & subtitle -->
+      <div style="margin-bottom: 1.4rem;">
+        <h1 id="login-portal-title"
+          style="margin: 0 0 0.35rem; font-size: 1.55rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
+          Sign In to CARE
+        </h1>
+        <p id="login-portal-sub" style="margin: 0; font-size: 0.88rem; color: #64748b; line-height: 1.4;">
+          Enter field credentials to record observations & patient vitals
+        </p>
+      </div>
+
+      <div id="login-error" class="alert-error hidden"></div>
+
+      <!-- Login Form -->
+      <form id="login-form" style="display: flex; flex-direction: column; gap: 1.1rem;">
+        <!-- Username Field -->
+        <div class="form-group">
+          <label id="lbl-username" class="form-label" for="login-username">
+            ASHA Worker Username
+          </label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <span
+              style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">👤</span>
+            <input id="login-username" class="form-input" type="text" placeholder="e.g. asha1" value="asha1"
+              autocomplete="off" required />
+          </div>
+        </div>
+
+        <!-- Password Field with Eye Toggle -->
+        <div class="form-group">
+          <label class="form-label" for="login-password">
+            Password
+          </label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <span
+              style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">🔒</span>
+            <input id="login-password" class="form-input" type="password" placeholder="••••••••" value="asha123"
+              autocomplete="new-password" required style="padding-right: 2.8rem;" />
+
+            <button type="button" id="toggle-pwd-btn"
+              onclick="togglePasswordVisibility('login-password', 'pwd-eye-icon')"
+              style="position: absolute; right: 0.9rem; background: none; border: none; cursor: pointer; font-size: 1.15rem; color: #64748b; padding: 0.2rem; display: flex; align-items: center; justify-content: center;"
+              title="Show or hide password">
+              <span id="pwd-eye-icon">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="login-submit-btn" class="btn-submit">
+          Sign In ➔
+        </button>
+      </form>
+
+      <!-- Colleague Delegate Sync Section (Visible for Doctor role) -->
+      <div id="delegate-link-wrap" class="hidden" style="margin-top: 1.2rem;">
+        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%; margin-bottom: 0.8rem;">
+          <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+          <span
+            style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">-
+            OR -</span>
+          <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+        </div>
+        <button id="delegate-mode-btn" type="button" onclick="window.location.href='doctor.html'"
+          style="width: 100%; padding: 0.65rem 1rem; background: #f0f9ff; border: 1.5px solid #bae6fd; color: #0369a1; border-radius: 20px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+          🔄 Sync Only (Delegate Mode)
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const errBox = document.getElementById('login-error');
+      const submitBtn = document.getElementById('login-submit-btn');
+
+      errBox.classList.add('hidden');
+      errBox.textContent = '';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in…';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+          throw new Error(data.detail || 'Login failed');
+        }
+
+        const tokenData = await res.json();
+        const role = tokenData.role || 'asha_worker';
+
+        // Store session keys
+        localStorage.setItem('care_access_token', tokenData.access_token);
+        localStorage.setItem('care_role', role);
+        localStorage.setItem('care_full_name', tokenData.full_name || username);
+        localStorage.setItem('care_username', username);
+
+        if (role === 'doctor') {
+          localStorage.setItem('doctor_access_token', tokenData.access_token);
+          localStorage.setItem('doctor_role', 'doctor');
+          localStorage.setItem('doctor_full_name', tokenData.full_name || username);
+          // Redirect to Doctor Portal Page
+          window.location.href = 'doctor.html';
+        } else {
+          // Redirect to ASHA Worker Dashboard Page
+          window.location.href = 'asha.html';
+        }
+
+      } catch (err) {
+        // Offline fallback for demo accounts
+        if (err.name === 'TypeError' || err.message.includes('fetch')) {
+          if (_selectedRole === 'asha' && username === 'asha1' && password === 'asha123') {
+            localStorage.setItem('care_access_token', 'offline_asha_token');
+            localStorage.setItem('care_role', 'asha_worker');
+            localStorage.setItem('care_full_name', 'Priya (ASHA Worker)');
+            localStorage.setItem('care_username', 'asha1');
+            window.location.href = 'asha.html';
+            return;
+          } else if (_selectedRole === 'doctor' && username === 'doctor1' && password === 'doctor123') {
+            localStorage.setItem('doctor_access_token', 'offline_doctor_token');
+            localStorage.setItem('doctor_role', 'doctor');
+            localStorage.setItem('doctor_full_name', 'Dr. Rajesh Kumar');
+            localStorage.setItem('care_access_token', 'offline_doctor_token');
+            localStorage.setItem('care_role', 'doctor');
+            window.location.href = 'doctor.html';
+            return;
+          }
+        }
+        errBox.textContent = err.message;
+        errBox.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = _selectedRole === 'doctor' ? 'Doctor Sign In ➔' : 'Sign In ➔';
+      }
+    });
+  </script>
+
+</body>
+
+</html>

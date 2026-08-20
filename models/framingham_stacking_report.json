@@ -1,0 +1,58 @@
+{
+  "class_distribution_before_smote": {
+    "counts": {
+      "0": 3099,
+      "1": 557
+    },
+    "pct": {
+      "0": 84.8,
+      "1": 15.2
+    }
+  },
+  "ablation_auc_table": {
+    "logistic_regression": 0.6617943548387097,
+    "random_forest": 0.6873415898617512,
+    "gradient_boosting": 0.6939084101382489,
+    "stacking_ensemble": 0.6931163594470047
+  },
+  "baseline_vs_stack": {
+    "logistic_regression_baseline_auc": 0.6617943548387097,
+    "stacking_ensemble_auc": 0.6931163594470047
+  },
+  "cv_mean_auc": 0.6781508543206622,
+  "cv_std_auc": 0.026396603436404823,
+  "detailed_results": {
+    "baseline_logistic_regression": {
+      "auc": 0.6617943548387097,
+      "precision": 0.22868217054263565,
+      "recall": 0.5267857142857143,
+      "f1": 0.31891891891891894,
+      "confusion_matrix": [
+        [
+          421,
+          199
+        ],
+        [
+          53,
+          59
+        ]
+      ]
+    },
+    "stacking_ensemble": {
+      "auc": 0.6931163594470047,
+      "precision": 0.34,
+      "recall": 0.30357142857142855,
+      "f1": 0.32075471698113206,
+      "confusion_matrix": [
+        [
+          554,
+          66
+        ],
+        [
+          78,
+          34
+        ]
+      ]
+    }
+  }
+}

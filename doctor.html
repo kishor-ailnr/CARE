@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARE — Doctor Clinical Dashboard</title>
+
+  <!-- Google Fonts & Chart.js CDN -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%230b0f1f'/><path d='M256 448l-30.165-27.211C118.718 323.588 48 259.488 48 179.805 48 114.475 99.475 63 164.805 63c36.877 0 72.269 17.155 95.195 44.209C282.926 80.155 318.318 63 355.195 63 420.525 63 472 114.475 472 179.805c0 79.683-70.718 143.783-177.835 241.084L256 448z' fill='%237B61FF'/></svg>" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="doctor_styles.css?v=3" />
+  <style>
+    body {
+      background: #f1f5f9 url('bg-silk.png') no-repeat center center fixed !important;
+      background-size: cover !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================ -->
+  <!-- FULL-SYNC PROGRESS MODAL                                     -->
+  <!-- ============================================================ -->
+  <div id="sync-modal-overlay" class="hidden" style="
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(5, 8, 22, 0.92);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 1.5rem;
+  ">
+    <div style="text-align: center; max-width: 480px; width: 90%; padding: 2.5rem; background: rgba(15,20,40,0.95); border: 1px solid rgba(123,97,255,0.3); border-radius: 24px; box-shadow: 0 0 60px rgba(123,97,255,0.15);">
+      <div style="font-size: 2.5rem; margin-bottom: 0.8rem;">🔄</div>
+      <h2 style="font-size: 1.2rem; font-weight: 700; color: #e0d8ff; margin: 0 0 0.4rem;">Syncing Patient Records</h2>
+      <p style="font-size: 0.85rem; color: rgba(255,255,255,0.45); margin: 0 0 1.4rem;">Building your offline cache so you can work without internet.</p>
+
+      <!-- Progress counter -->
+      <div id="sync-counter" style="font-size: 1.05rem; font-weight: 600; color: #B8A6FF; margin-bottom: 0.8rem;">
+        Starting sync…
+      </div>
+
+      <!-- Progress bar track -->
+      <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden;">
+        <div id="sync-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #7B61FF, #00D9C0); border-radius: 99px; transition: width 0.3s ease;"></div>
+      </div>
+
+      <!-- Phase label -->
+      <div id="sync-phase-label" style="font-size: 0.78rem; color: rgba(255,255,255,0.35); margin-top: 0.6rem;">
+        Fetching patient directory…
+      </div>
+
+      <!-- Partial sync resume notice (shown only when resuming) -->
+      <div id="sync-resume-notice" class="hidden" style="margin-top: 0.8rem; font-size: 0.8rem; color: #f59e0b; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 0.5rem 0.8rem;">
+        ⚡ Resuming partial sync from last session
+      </div>
+
+      <!-- Continue in background button (shown after 4 seconds) -->
+      <button id="sync-background-btn" class="hidden" onclick="continueSyncInBackground()" style="
+        margin-top: 1.4rem; padding: 0.6rem 1.6rem;
+        background: rgba(123,97,255,0.15); border: 1px solid rgba(123,97,255,0.4);
+        color: #B8A6FF; border-radius: 99px; font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+      " onmouseover="this.style.background='rgba(123,97,255,0.3)'" onmouseout="this.style.background='rgba(123,97,255,0.15)'">
+        Continue in Background →
+      </button>
+
+      <!-- Skip sync button (only when partial sync exists already) -->
+      <div id="sync-skip-wrap" class="hidden" style="margin-top: 0.6rem;">
+        <button onclick="skipAndProceed()" style="
+          background: none; border: none; color: rgba(255,255,255,0.3);
+          font-size: 0.78rem; cursor: pointer; text-decoration: underline;
+        ">Skip — use existing partial cache</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING BACKGROUND SYNC BADGE (visible after "Continue in background") -->
+  <div id="sync-float-badge" class="hidden" style="
+    position: fixed; bottom: 1.2rem; right: 1.2rem; z-index: 8888;
+    background: rgba(15,20,40,0.95); border: 1px solid rgba(123,97,255,0.4);
+    border-radius: 99px; padding: 0.5rem 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.8rem; color: #B8A6FF; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(123,97,255,0.2);
+  ">
+    <span style="animation: spin 1.2s linear infinite; display:inline-block;">⟳</span>
+    <span id="sync-float-text">Syncing 0 / 0</span>
+  </div>
+
+  <style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+
+
+  <div id="app-container">
+
+    <!-- Top Header Bar -->
+    <header class="top-bar">
+      <div class="brand-title">
+        <span>🫀 CARE</span>
+        <span class="doctor-badge">Doctor Portal</span>
+      </div>
+      <div id="user-info-bar" class="hidden" style="display: flex; align-items: center; gap: 0.8rem;">
+        <span id="doctor-name-display" style="font-size: 0.88rem; color: var(--text-muted);">Dr. User</span>
+        <button id="logout-btn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.7rem;">Logout</button>
+      </div>
+    </header>
+
+    <!-- Global Navigation Bar (Hidden on Login Screen) -->
+    <nav id="global-nav" class="nav-bar hidden">
+      <button id="nav-back-btn" class="nav-btn" type="button">
+        ⬅ Back
+      </button>
+      <button id="nav-new-patient-btn" class="nav-btn" type="button">
+        🆕 New Patient ID
+      </button>
+    </nav>
+
+    <!-- =================================================================== -->
+    <!-- SCREEN 1: DOCTOR LOGIN (Split-Card Design)                            -->
+    <!-- =================================================================== -->
+    <section id="screen-login" class="login-split-card" style="display: flex; max-width: 860px; width: 100%; margin: 2rem auto; background: #ffffff; border-radius: 24px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0; overflow: hidden; position: relative;">
+
+      <!-- Left Hero Banner Pane (Matching Reference UI) -->
+      <div class="login-hero-pane" style="flex: 1; background: linear-gradient(145deg, #c7d2fe 0%, #a5b4fc 50%, #818cf8 100%); padding: 2.8rem 2.2rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; color: #ffffff;">
+        <!-- Top App Device Badge -->
+        <div style="display: flex; align-items: center; gap: 0.8rem; z-index: 10;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 1.3rem;">
+            📱
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; color: #1e1b4b;">CARE AI</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: #312e81; text-transform: uppercase; letter-spacing: 0.05em;">Doctor Clinical Portal</div>
+          </div>
+        </div>
+
+        <!-- Tagline & Quote -->
+        <div style="margin: 2rem 0 1rem; z-index: 10;">
+          <p style="font-size: 1.15rem; font-weight: 600; line-height: 1.6; color: #1e1b4b; text-shadow: 0 1px 2px rgba(255,255,255,0.4);">
+            "We at <strong>CARE</strong> are always fully focused on intelligent early cardiovascular risk prevention and precision clinical analytics."
+          </p>
+        </div>
+
+        <!-- 3D Pedestal with Stethoscope Illustration -->
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; margin-top: auto; padding-top: 1rem; z-index: 10;">
+          <div style="position: relative; width: 220px; height: 90px; background: #6366f1; border-radius: 50%; box-shadow: 0 20px 30px rgba(49, 46, 129, 0.35); display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; top: -14px; width: 220px; height: 85px; background: #818cf8; border-radius: 50%; border: 3px solid #a5b4fc; display: flex; align-items: center; justify-content: center;">
+              <div style="position: absolute; top: -75px; font-size: 5.5rem; filter: drop-shadow(0 15px 12px rgba(30, 27, 75, 0.45)); animation: subtleFloat 3s ease-in-out infinite;">
+                🩺
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ambient blur circles -->
+        <div style="position: absolute; width: 300px; height: 300px; background: rgba(255,255,255,0.18); border-radius: 50%; top: -60px; left: -60px; filter: blur(40px); pointer-events: none;"></div>
+        <div style="position: absolute; width: 200px; height: 200px; background: rgba(99,102,241,0.25); border-radius: 50%; bottom: 10px; right: -40px; filter: blur(30px); pointer-events: none;"></div>
+      </div>
+
+      <!-- Right Form Pane -->
+      <div class="login-form-pane" style="flex: 1.18; padding: 2.8rem 2.6rem; background: #ffffff; display: flex; flex-direction: column; justify-content: center;">
+        <!-- Top header meta -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+          <div style="font-size: 0.72rem; font-weight: 700; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; padding: 0.25rem 0.75rem; border-radius: 99px; text-transform: uppercase;">
+            DOCTOR CLINICAL PORTAL
+          </div>
+          <div style="font-size: 0.78rem; font-weight: 600; color: #64748b; display: flex; align-items: center; gap: 0.3rem;">
+            <span>🌐</span> English (IN) ▾
+          </div>
+        </div>
+
+        <!-- Heading -->
+        <div style="margin-bottom: 1.4rem;">
+          <h1 style="margin: 0 0 0.35rem; font-size: 1.45rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
+            Doctor Portal Sign In
+          </h1>
+          <p style="margin: 0; font-size: 0.88rem; color: #64748b; line-height: 1.4;">
+            Access clinical analytics, SHAP explanations & digital twin simulations
+          </p>
+        </div>
+
+        <div id="login-error" class="alert-error hidden" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem;"></div>
+
+        <!-- Doctor Login Form -->
+        <form id="login-form" style="display: flex; flex-direction: column; gap: 1.1rem;">
+          <!-- Doctor Username Field -->
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" for="login-username" style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-bottom: 0.4rem; display: block;">
+              Doctor Username
+            </label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <span style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">👨‍⚕️</span>
+              <input id="login-username" class="form-input" type="text" placeholder="e.g. doctor1" value="doctor1" autocomplete="off" required 
+                     style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; color: #0f172a; font-size: 0.95rem; font-weight: 500; transition: border-color 0.2s;" />
+            </div>
+          </div>
+
+          <!-- Password Field with Eye Icon Toggle -->
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" for="login-password" style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-bottom: 0.4rem; display: block;">
+              Password
+            </label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <span style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">🔒</span>
+              <input id="login-password" class="form-input" type="password" placeholder="••••••••" value="doctor123" autocomplete="new-password" required 
+                     style="width: 100%; padding: 0.75rem 2.8rem 0.75rem 2.6rem; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; color: #0f172a; font-size: 0.95rem; font-weight: 500; transition: border-color 0.2s;" />
+              
+              <!-- Interactive Eye Icon for Password Visibility -->
+              <button type="button" onclick="toggleDoctorPassword()" 
+                      style="position: absolute; right: 0.8rem; background: none; border: none; cursor: pointer; font-size: 1.15rem; color: #64748b; padding: 0.2rem; display: flex; align-items: center; justify-content: center;" title="Show or hide password">
+                <span id="doc-pwd-eye-icon">👁️</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Doctor Sign In Button -->
+          <button type="submit" class="btn-primary" 
+                  style="margin-top: 0.4rem; width: 100%; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #7c3aed, #0284c7); color: #ffffff; font-size: 1rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25); transition: all 0.2s ease;">
+            Doctor Sign In ➔
+          </button>
+        </form>
+
+        <!-- Colleague Delegate Sync Section -->
+        <div style="margin-top: 1.2rem;">
+          <div class="divider-line" style="display: flex; align-items: center; gap: 0.8rem; width: 100%; margin-bottom: 0.8rem;">
+            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+            <span style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">- OR -</span>
+            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+          </div>
+          <button id="delegate-mode-btn" type="button" 
+                  style="width: 100%; padding: 0.65rem 1rem; background: #f0f9ff; border: 1.5px solid #bae6fd; color: #0369a1; border-radius: 12px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(3, 105, 161, 0.08);">
+            🔄 Colleague Sync Only (Delegate Mode)
+          </button>
+          <p style="font-size: 0.72rem; color: #64748b; text-align: center; margin-top: 0.4rem; line-height: 1.4;">
+            Allows a colleague to batch-sync clinical records without viewing patient files
+          </p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SCREEN: DELEGATE SYNC MODE                                           -->
+    <!-- =================================================================== -->
+    <section id="screen-delegate" class="glass-card hidden" style="max-width: 500px; margin: 0 auto;">
+      <div>
+        <h1 class="screen-title" style="font-size:1.2rem;">🔄 Delegate Sync Mode</h1>
+        <p class="screen-sub" style="font-size:0.82rem;">
+          Enter the <strong>doctor's credentials</strong> to sync all patient data to this device.<br/>
+          You will <strong>not</strong> be able to view any patient records in this mode.
+        </p>
+      </div>
+
+      <div id="delegate-error" class="alert-error hidden"></div>
+
+      <form id="delegate-form" class="form-group" style="gap:1rem;">
+        <div class="form-group">
+          <label class="form-label" for="delegate-username">Doctor Username</label>
+          <input id="delegate-username" class="form-input" type="text" placeholder="e.g. doctor1" autocomplete="off" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="delegate-password">Doctor Password</label>
+          <input id="delegate-password" class="form-input" type="password" placeholder="••••••••" autocomplete="new-password" required />
+        </div>
+        <button type="submit" class="btn-primary">Start Sync ➔</button>
+      </form>
+
+      <!-- Delegate sync progress (hidden until sync starts) -->
+      <div id="delegate-progress-wrap" class="hidden" style="margin-top:1.2rem;">
+        <div id="delegate-counter" style="font-size:1rem;font-weight:600;color:#B8A6FF;margin-bottom:0.6rem;text-align:center;">
+          Starting…
+        </div>
+        <div style="width:100%;height:10px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;">
+          <div id="delegate-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7B61FF,#00D9C0);border-radius:99px;transition:width 0.3s ease;"></div>
+        </div>
+        <div id="delegate-phase" style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-top:0.5rem;text-align:center;">
+          Fetching patient list…
+        </div>
+      </div>
+
+      <!-- Sync complete message -->
+      <div id="delegate-complete" class="hidden" style="text-align:center;padding:1.2rem 0;color:#00D9C0;">
+        <div style="font-size:2rem;margin-bottom:0.4rem;">✅</div>
+        <div style="font-weight:700;font-size:1.05rem;">Sync Complete</div>
+        <div style="font-size:0.82rem;color:rgba(255,255,255,0.45);margin-top:0.3rem;">You may close this device now.</div>
+      </div>
+
+      <button id="delegate-cancel-btn" type="button" style="
+        margin-top:1rem; width:100%; padding:0.5rem;
+        background:none; border:none; color:rgba(255,255,255,0.3);
+        font-size:0.8rem; cursor:pointer; text-decoration:underline;
+      ">← Back to normal login</button>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SCREEN 2: PATIENT LOOKUP -->
+    <!-- =================================================================== -->
+    <section id="screen-patient-lookup" class="glass-card hidden">
+      <div style="margin-bottom: 1rem;">
+        <h1 class="screen-title">Patient Lookup & Search</h1>
+        <p class="screen-sub">Search existing patients or scan patient QR code</p>
+      </div>
+
+      <!-- Top QR Scan Option -->
+      <div style="background: linear-gradient(135deg, rgba(0,217,192,0.15), rgba(123,97,255,0.15)); padding: 1.1rem; border-radius: 16px; border: 1.5px solid rgba(0,217,192,0.4); text-align: center; margin-bottom: 1.2rem; box-shadow: 0 4px 15px rgba(0,217,192,0.1);">
+        <div style="font-size: 0.9rem; font-weight: 700; color: #00D9C0; margin-bottom: 0.3rem;">📷 Scan Patient QR Code</div>
+        <p style="font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 0.8rem;">Scan patient QR code to generate & open clinical dashboard</p>
+        <button type="button" class="btn-primary" onclick="openQRScanner()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-size: 0.95rem; font-weight: 700; background: linear-gradient(90deg, #00D9C0, #7B61FF); border: none; padding: 0.75rem 1rem; border-radius: 14px; cursor: pointer;">
+          <span style="font-size: 1.2rem;">📷</span> Scan Patient QR
+        </button>
+      </div>
+
+      <!-- Direct ID Search -->
+      <div class="form-group" style="background: #ffffff; padding: 1.4rem; border-radius: 16px; border: 1.5px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+        <label class="form-label" for="lookup-patient-id" style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">Enter Patient ID</label>
+        <div style="display: flex; gap: 0.8rem; margin-top: 0.5rem;">
+          <input id="lookup-patient-id" class="form-input" type="text" placeholder="e.g. e8c0cc84-be5b-deb8-d6d9-73d3c376f1b9" onkeydown="if(event.key==='Enter'){ const pid=this.value.trim(); if(pid) window.location.href='patient.html?id='+encodeURIComponent(pid); }" style="background: #f8fafc; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.95rem;" />
+          <button id="lookup-go-btn" class="btn-primary" type="button" onclick="const pid = document.getElementById('lookup-patient-id').value.trim(); if(pid) window.location.href='patient.html?id='+encodeURIComponent(pid);" style="width: 120px; font-weight: 700; background: #0284c7; color: white; border: none; border-radius: 10px; cursor: pointer;">
+            Search ➔
+          </button>
+        </div>
+
+        <!-- Quick Patient Selectors -->
+        <div style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #e2e8f0;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">
+            ⭐ Recommended Patient Records (Rich Longitudinal History):
+          </div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" onclick="window.location.href='patient.html?id=e8c0cc84-be5b-deb8-d6d9-73d3c376f1b9'" style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 0.4rem 0.8rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+              🫀 Patient #e8c0cc84 (400 visits, 1.9k vitals)
+            </button>
+            <button type="button" onclick="window.location.href='patient.html?id=d8d6d504-cef2-aeee-69e9-ae3c986cbf41'" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 0.4rem 0.8rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+              🫀 Patient #d8d6d504 (892 visits, 362 vitals)
+            </button>
+            <button type="button" onclick="window.location.href='patient.html?id=cc595c2a-6c64-ec0f-34ba-f894f0bef3cc'" style="background: #fefce8; border: 1px solid #fef08a; color: #854d0e; padding: 0.4rem 0.8rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+              🫀 Patient #cc595c2a (388 visits, 1.6k vitals)
+            </button>
+            <button type="button" onclick="window.location.href='patient.html?id=6462ab55-9a68-cef5-c994-e1795142296a'" style="background: #f5f3ff; border: 1px solid #ddd6fe; color: #6d28d9; padding: 0.4rem 0.8rem; border-radius: 99px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+              🫀 Patient #6462ab55 (264 visits, 679 vitals)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Substring Search -->
+      <div class="form-group" style="margin-top: 1.2rem;">
+        <label class="form-label" for="search-input" style="font-weight: 700; color: #0f172a;">🔍 Filter Patient Directory</label>
+        <input id="search-input" class="form-input" type="text" placeholder="Search by ID or condition..." oninput="fetchPatientDirectory(this.value.trim())" style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px;" />
+
+        <div id="search-results" class="search-results-list" style="margin-top: 0.8rem;">
+          <!-- Dynamic list of matching patients -->
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SCREEN 3: DOCTOR'S DASHBOARD VIEW -->
+    <!-- =================================================================== -->
+    <section id="screen-dashboard" class="hidden" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
+      
+      <!-- Read-Only Banner -->
+      <div class="view-only-banner">
+        🔒 <strong>View-Only Clinical Portal:</strong> Historical ASHA observation entries are read-only.
+      </div>
+
+      <!-- Offline alert container when no cache exists -->
+      <div id="dashboard-offline-alert" class="alert-error hidden" style="margin-bottom: 0.5rem; background: rgba(255, 77, 77, 0.15); border: 1px solid var(--risk-high); color: #FF6B6B; padding: 0.8rem 1.2rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;"></div>
+
+      <!-- Patient Profile Header Card -->
+      <div class="glass-card" style="padding: 1.2rem 1.6rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.2rem;">
+          <div style="display: flex; align-items: center; gap: 1.2rem;">
+            <div id="patient-avatar-box" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(123, 97, 255, 0.2); border: 2px solid var(--accent-teal); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; overflow: hidden;">
+              👤
+            </div>
+            <div>
+              <h2 id="dash-patient-id" class="screen-title" style="font-size: 1.3rem;">Patient #---</h2>
+              <div id="dash-patient-meta" class="screen-sub">Age: -- · Gender: -- · Condition: --</div>
+              <div id="dash-visit-count" style="font-size: 0.8rem; color: var(--accent-teal); margin-top: 0.2rem;">0 recorded visits</div>
+            </div>
+          </div>
+
+          <div id="cache-status-tag" class="hidden" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600;">
+            <span id="cache-status-icon">⚡</span> <span id="cache-status-text">Last updated: --</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Mood Card -->
+      <div id="risk-mood-card" class="mood-card low">
+        <div id="risk-mood-face" class="mood-face low">😄</div>
+        <div id="risk-mood-value" class="mood-risk-value" style="color: var(--risk-low);">0.0%</div>
+        <div id="risk-mood-label" class="mood-risk-label">Predicted 10-Year CHD Risk</div>
+        
+        <div style="display: flex; gap: 1.2rem; align-items: center; margin-top: 0.6rem; font-size: 0.88rem; color: var(--text-muted);">
+          <div>RandomForest score: <b id="rf-score-text" style="color: var(--text-main);">0.0%</b></div>
+          <div>·</div>
+          <div>Cox survival score: <b id="cox-score-text" style="color: var(--text-main);">0.0%</b></div>
+        </div>
+
+        <div id="models-agree-badge" class="agree-badge agree">
+          ✅ Models agree
+        </div>
+      </div>
+
+      <!-- Historical Vitals Trend Charts -->
+      <div class="section-label">
+        📊 Historical Vitals Trends <span class="model-tag">Longitudinal Observations</span>
+      </div>
+      <div id="trend-charts-container" class="glass-card" style="gap: 1.5rem;">
+        <!-- Canvas trend charts injected dynamically -->
+      </div>
+
+      <!-- Digital Twin Intervention Comparison -->
+      <div class="section-label">
+        🧬 Digital Twin — Intervention Comparison <span class="model-tag">Counterfactual Simulation</span>
+      </div>
+      <div class="glass-card">
+        <p class="screen-sub" style="font-size: 0.85rem;">
+          Simulates next-visit vital sign predictions under hypothetical interventions and ranks them by cardiovascular risk reduction.
+        </p>
+
+        <div id="recommendation-banner" class="alert-error" style="background: rgba(46, 204, 113, 0.15); border-color: rgba(46, 204, 113, 0.3); color: var(--risk-low); display: flex; align-items: center; gap: 0.5rem;">
+          ✅ Recommended: <strong>--</strong>
+        </div>
+
+        <div id="digital-twin-grid" class="interv-grid">
+          <!-- Digital Twin scenario cards -->
+        </div>
+      </div>
+
+      <!-- SHAP Explainable AI Breakdown -->
+      <div class="section-label">
+        🔍 Why this risk score? <span class="model-tag">SHAP TreeExplainer</span>
+      </div>
+      <div class="glass-card">
+        <p class="screen-sub" style="font-size: 0.85rem;">
+          Top 8 risk factor contributions for this patient (red increases risk, green decreases risk).
+        </p>
+        <div id="shap-rows-container" class="shap-container">
+          <!-- SHAP horizontal bar rows injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Cox Survival Trajectory Curve -->
+      <div class="section-label">
+        📈 Risk Over Time <span class="model-tag">Cox Proportional Hazards Model</span>
+      </div>
+      <div class="glass-card">
+        <p class="screen-sub" style="font-size: 0.85rem;">
+          Estimates cumulative cardiovascular disease risk buildup month-by-month across the 120-month follow-up window.
+        </p>
+        <div style="width: 100%; height: 260px; position: relative;">
+          <canvas id="cox-chart-canvas"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- App Script -->
+  <script src="db.js?v=3"></script>
+  <script src="doctor_app.js?v=3"></script>
+  <script src="doctor_patient_detail.js?v=3"></script>
+  <script>
+    function toggleDoctorPassword() {
+      const inp = document.getElementById('login-password');
+      const icon = document.getElementById('doc-pwd-eye-icon');
+      if (!inp) return;
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (icon) icon.textContent = '👁️';
+      } else {
+        inp.type = 'password';
+        if (icon) icon.textContent = '🙈';
+      }
+    }
+  </script>
+</body>
+</html>

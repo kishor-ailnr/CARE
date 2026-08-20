@@ -1,0 +1,17 @@
+{
+  "name": "CARE — ASHA Worker",
+  "short_name": "CARE",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0f1f",
+  "theme_color": "#0b0f1f",
+  "description": "Offline-capable Clinical AI Reasoning Engine for ASHA field health workers.",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%230b0f1f'/><path d='M256 448l-30.165-27.211C118.718 323.588 48 259.488 48 179.805 48 114.475 99.475 63 164.805 63c36.877 0 72.269 17.155 95.195 44.209C282.926 80.155 318.318 63 355.195 63 420.525 63 472 114.475 472 179.805c0 79.683-70.718 143.783-177.835 241.084L256 448z' fill='url(%23grad)'/><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%237B61FF'/><stop offset='100%25' stop-color='%2300D9C0'/></linearGradient></defs></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

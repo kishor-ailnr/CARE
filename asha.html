@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARE — ASHA Worker Dashboard</title>
+
+  <!-- PWA Manifest & Theme -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b0f1f" />
+  <meta name="description" content="CARE: ASHA Worker Clinical Platform." />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 512 512'><rect width='512' height='512' rx='128' fill='%230b0f1f'/><path d='M256 448l-30.165-27.211C118.718 323.588 48 259.488 48 179.805 48 114.475 99.475 63 164.805 63c36.877 0 72.269 17.155 95.195 44.209C282.926 80.155 318.318 63 355.195 63 420.525 63 472 114.475 472 179.805c0 79.683-70.718 143.783-177.835 241.084L256 448z' fill='%2300D9C0'/></svg>" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles.css?v=10" />
+
+  <style>
+    body {
+      background: #f1f5f9 url('bg-silk.png') no-repeat center center fixed !important;
+      background-size: cover !important;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 1.5rem;
+    }
+
+    #app-container {
+      width: 100%;
+      max-width: 960px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .ambulance-back-btn {
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      cursor: pointer;
+      height: 38px;
+      transition: transform 0.8s cubic-bezier(0.3, 0, 0.2, 1);
+    }
+    .ambulance-back-btn:hover {
+      transform: scale(1.05);
+    }
+    .ambulance-back-btn.drive-away {
+      transform: translateX(-150vw) scale(1.05) !important;
+    }
+  </style>
+  <script>
+    window.animateAmbulanceBack = function(img, callbackName) {
+      if (img.classList.contains('drive-away')) return;
+      img.classList.add('drive-away');
+      setTimeout(() => {
+        if (typeof window[callbackName] === 'function') {
+          window[callbackName]();
+        } else if (callbackName === 'location.reload') {
+          location.reload();
+        } else if (callbackName === 'handleNavBackWithAmbulance') {
+          if (typeof handleNavBack === 'function') handleNavBack();
+        }
+        img.classList.remove('drive-away');
+      }, 700);
+    };
+
+    // Auth gate: redirect to index.html if not logged in as asha_worker
+    (function authGate() {
+      const token = localStorage.getItem('care_access_token');
+      const role = localStorage.getItem('care_role');
+      if (!token || role !== 'asha_worker') {
+        window.location.href = '/';
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <div id="app-container">
+
+    <!-- TOP HEADER BAR -->
+    <header class="top-bar" style="width: 100%; max-width: 940px;">
+      <div class="brand-title">
+        <span>🫀 CARE</span>
+        <span style="font-size:0.75rem; font-weight:700; background:#f0fdfa; color:#0d9488; border:1px solid #99f6e4; padding:0.2rem 0.6rem; border-radius:99px; margin-left:0.5rem;">
+          ASHA WORKER
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.8rem;">
+        <div id="pending-sync-badge" class="sync-status-pill hidden" style="background: rgba(241, 196, 15, 0.18); border-color: rgba(241, 196, 15, 0.4); color: #f39c12; font-weight: 600;">
+          ⏳ <span id="pending-sync-text">0 pending sync</span>
+        </div>
+        <div id="sync-status" class="sync-status-pill hidden">
+          <span class="status-dot"></span>
+          <span id="sync-status-text"></span>
+        </div>
+        <button id="logout-btn" class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; border-radius: 12px;">
+          🚪 Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Navigation Bar -->
+    <nav id="global-nav" class="nav-bar" style="width: 100%; max-width: 940px;">
+      <img id="nav-back-btn" src="ambulance.png" class="ambulance-back-btn" onclick="animateAmbulanceBack(this, 'handleNavBackWithAmbulance')" alt="Back" title="Back" />
+      <button id="nav-new-patient-btn" class="nav-btn" type="button">🆕 New Patient ID</button>
+    </nav>
+
+    <!-- SCREEN: HOME (Patient Lookup & Create) -->
+    <section id="screen-home" class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <div>
+          <h1 class="screen-title">Patient Records</h1>
+          <p class="screen-sub" id="welcome-user-text">Logged in as ASHA Worker</p>
+        </div>
+      </div>
+
+      <!-- Top QR Scan Option -->
+      <div style="background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(2, 132, 199, 0.08)); padding: 1.2rem; border-radius: 20px; border: 1.5px solid rgba(13, 148, 136, 0.25); text-align: center; margin-bottom: 0.8rem;">
+        <div style="font-size: 0.95rem; font-weight: 700; color: #0d9488; margin-bottom: 0.3rem;">📷 Scan Patient QR Code</div>
+        <p style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.8rem;">Scan patient's health QR code to open their field observations profile</p>
+        <button type="button" class="btn-primary" onclick="openQRScanner()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-size: 0.95rem; font-weight: 700; background: linear-gradient(90deg, #0d9488, #0284c7); border: none; padding: 0.8rem 1rem; border-radius: 16px; cursor: pointer; color: #fff;">
+          <span style="font-size: 1.2rem;">📷</span> Scan QR Code
+        </button>
+      </div>
+
+      <!-- Option A: Lookup Existing Patient -->
+      <div class="form-group" style="background: rgba(248, 250, 252, 0.7); padding: 1.2rem; border-radius: 20px; border: 1.5px solid #e2e8f0;">
+        <label class="form-label" for="lookup-patient-id" style="font-weight: 700; color: #0f172a;">🔍 Open Existing Patient</label>
+        <div style="display: flex; gap: 0.6rem; margin-top: 0.4rem;">
+          <input id="lookup-patient-id" class="form-input" type="text" placeholder="Enter Patient ID (e.g. 0006cd...)" style="flex: 1; border-radius: 14px;" />
+          <button id="lookup-patient-btn" class="btn-primary" style="width: 110px; border-radius: 14px;">Go ➔</button>
+        </div>
+      </div>
+
+      <!-- Option B: Create New Patient Form -->
+      <div class="form-group" style="background: rgba(248, 250, 252, 0.7); padding: 1.2rem; border-radius: 20px; border: 1.5px solid #e2e8f0;">
+        <h3 class="form-label" style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">➕ Create New Patient</h3>
+        <p class="screen-sub" style="font-size: 0.82rem; margin-bottom: 0.8rem;">Register a new patient locally in the field</p>
+
+        <form id="create-patient-form" style="display: flex; flex-direction: column; gap: 0.9rem;">
+          <div class="form-group">
+            <label class="form-label" for="create-dob">Estimated Date of Birth</label>
+            <input id="create-dob" class="form-input" type="date" required style="border-radius: 12px;" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-sex">Gender / Sex</label>
+            <select id="create-sex" class="form-select" required style="border-radius: 12px;">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-condition">Condition Module</label>
+            <input id="create-condition" class="form-input" type="text" value="cardiovascular" readOnly style="border-radius: 12px;" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-patient-id">Custom Patient ID (Optional)</label>
+            <input id="create-patient-id" class="form-input" type="text" placeholder="Leave blank to auto-generate UUID" style="border-radius: 12px;" />
+          </div>
+          <button type="submit" class="btn-primary mt-2" style="border-radius: 14px; padding: 0.8rem;">Create & Open Patient ➔</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SCREEN: PATIENT PROFILE & CATEGORY SELECT -->
+    <section id="screen-profile" class="glass-card hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+        <img src="ambulance.png" class="ambulance-back-btn" onclick="animateAmbulanceBack(this, 'handleNavBack')" alt="Back" title="Back" />
+      </div>
+      <div class="patient-profile-card">
+        <div id="patient-avatar-container" class="patient-avatar">👤</div>
+        <div class="patient-info">
+          <div id="profile-patient-id" class="patient-id-title">Patient #---</div>
+          <div id="profile-patient-meta" class="patient-meta">Age: -- | Sex: --</div>
+          <div id="profile-patient-condition" class="patient-meta" style="color: var(--accent-teal);">Cardiovascular</div>
+        </div>
+      </div>
+
+      <div class="form-group" style="background: rgba(248,250,252,0.8); padding: 1rem; border-radius: 16px; border: 1px solid #e2e8f0;">
+        <label class="form-label" style="font-size: 0.85rem;" for="upload-photo-input">📷 Patient Photo</label>
+        <div style="display: flex; gap: 0.6rem; align-items: center; margin-top: 0.3rem;">
+          <input id="upload-photo-input" type="file" accept="image/*" class="form-input" style="padding: 0.4rem; font-size: 0.82rem; border-radius: 12px;" />
+          <button id="upload-photo-btn" class="btn-secondary" style="width: 110px; font-size: 0.82rem; padding: 0.55rem; border-radius: 12px;">Upload</button>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="screen-title" style="font-size: 1.15rem;">Field Categories</h3>
+        <p class="screen-sub" style="font-size: 0.85rem;">Select a category to record observations</p>
+      </div>
+
+      <div class="category-grid">
+        <div class="category-card" data-category="eye">
+          <span class="category-icon">👁️</span><span class="category-label">Eye Related</span>
+        </div>
+        <div class="category-card" data-category="skin">
+          <span class="category-icon">🧴</span><span class="category-label">Skin Related</span>
+        </div>
+        <div class="category-card" data-category="body">
+          <span class="category-icon">🧍</span><span class="category-label">Body Related</span>
+        </div>
+        <div class="category-card" data-category="heart">
+          <span class="category-icon">🫀</span><span class="category-label">Heart Related</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: CATEGORY FORM -->
+    <section id="screen-category" class="glass-card hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+        <img src="ambulance.png" class="ambulance-back-btn" onclick="animateAmbulanceBack(this, 'handleNavBack')" alt="Back" title="Back" />
+      </div>
+      <div>
+        <h1 id="category-screen-title" class="screen-title">Category Form</h1>
+        <p class="screen-sub">Enter observation values for this checkup</p>
+      </div>
+      <form id="category-observation-form" style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <div id="category-form-fields" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        <button type="submit" class="btn-primary mt-2" style="border-radius: 14px; padding: 0.8rem;">💾 Save Observations ➔</button>
+      </form>
+    </section>
+
+    <!-- SCREEN: CONFIRMATION -->
+    <section id="screen-confirmation" class="glass-card hidden text-center">
+      <div class="success-icon-wrap">✓</div>
+      <h1 class="screen-title" style="color: var(--risk-low);">Observations Saved!</h1>
+      <p class="screen-sub">Stored locally in IndexedDB and queued for background sync.</p>
+      <div id="confirmation-summary" class="form-group" style="background: rgba(248,250,252,0.9); padding: 1rem; border-radius: 16px; text-align: left; font-size: 0.88rem; max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0;"></div>
+      <div style="display: flex; flex-direction: column; gap: 0.8rem; width: 100%; margin-top: 0.5rem;">
+        <button id="confirm-more-btn" class="btn-primary" style="border-radius: 14px;">➕ Record Another Category</button>
+        <button id="confirm-home-btn" class="btn-secondary" style="border-radius: 14px;">🏠 Return to Home</button>
+      </div>
+    </section>
+
+  </div><!-- #app-container -->
+
+  <!-- QR CODE SCANNER MODAL OVERLAY -->
+  <div id="qr-modal-overlay" class="hidden" style="
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(5, 8, 22, 0.88); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+  ">
+    <div style="
+      background: #0f1428; border: 1.5px solid rgba(0, 217, 190, 0.4);
+      border-radius: 24px; padding: 1.8rem; width: 90%; max-width: 440px;
+      box-shadow: 0 10px 40px rgba(0, 217, 190, 0.2); text-align: center;
+      position: relative; color: #ffffff;
+    ">
+      <button type="button" onclick="closeQRScanner()" style="
+        position: absolute; top: 1rem; right: 1.2rem;
+        background: rgba(255,255,255,0.1); border: none; color: #fff;
+        font-size: 1.2rem; border-radius: 50%; width: 32px; height: 32px;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+      ">✕</button>
+
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 0.4rem; color: #00D9C0;">📷 Scan Patient QR</h2>
+      <p style="font-size: 0.82rem; color: rgba(255,255,255,0.6); margin-bottom: 1.2rem;">
+        Point camera at patient's QR code or upload a QR image
+      </p>
+
+      <div style="
+        position: relative; width: 100%; height: 240px; background: #000;
+        border-radius: 16px; overflow: hidden; border: 2px dashed rgba(0, 217, 190, 0.5);
+        display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;
+      ">
+        <video id="qr-video" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+        <canvas id="qr-canvas" style="display: none;"></canvas>
+
+        <div id="qr-reticle" style="
+          position: absolute; inset: 20px; border: 2px solid #00D9C0;
+          border-radius: 12px; box-shadow: 0 0 15px rgba(0, 217, 190, 0.5);
+          pointer-events: none; display: flex; flex-direction: column; justify-content: center;
+        ">
+          <div style="
+            width: 100%; height: 2px; background: #00D9C0;
+            box-shadow: 0 0 8px #00D9C0; animation: scanLine 2s infinite ease-in-out;
+          "></div>
+        </div>
+      </div>
+
+      <div id="qr-status-msg" style="font-size: 0.82rem; color: #00D9C0; font-weight: 600; min-height: 1.5rem; margin-bottom: 0.8rem;">
+        Camera active... Looking for QR code
+      </div>
+
+      <div style="display: flex; gap: 0.6rem; justify-content: center;">
+        <label class="btn-secondary" style="
+          cursor: pointer; padding: 0.5rem 1rem; font-size: 0.82rem;
+          display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 12px;
+          background: rgba(0,217,192,0.12); border: 1px solid rgba(0,217,192,0.3); color: #00D9C0;
+        ">
+          📁 Upload QR Image
+          <input type="file" id="qr-file-input" accept="image/*" style="display: none;" onchange="handleQRFileUpload(event)" />
+        </label>
+        <button type="button" class="btn-secondary" onclick="closeQRScanner()" style="padding: 0.5rem 1rem; font-size: 0.82rem; border-radius: 12px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="db.js?v=10"></script>
+  <script src="app.js?v=10"></script>
+</body>
+</html>

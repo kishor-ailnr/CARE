@@ -1,0 +1,15 @@
+pandas
+scikit-learn
+tensorflow
+lifelines
+shap
+streamlit
+fhir.resources
+onnx
+onnxruntime
+matplotlib
+fastapi
+uvicorn
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
