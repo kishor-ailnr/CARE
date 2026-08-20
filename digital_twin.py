@@ -77,6 +77,15 @@ def load_patient_sequence(conn, patient_id, vitals_order):
 
 _cached_model = None
 
+_cached_norm = None
+
+def get_norm_constants():
+    global _cached_norm
+    if _cached_norm is None:
+        with open(NORM_PATH) as f:
+            _cached_norm = json.load(f)
+    return _cached_norm
+
 def get_lstm_model():
     global _cached_model
     if _cached_model is None:
@@ -84,11 +93,10 @@ def get_lstm_model():
     return _cached_model
 
 def simulate_digital_twin(patient_id):
-    with open(NORM_PATH) as f:
-        norm = json.load(f)
+    norm = get_norm_constants()
     vitals_order = norm["vitals_order"]
-    vmin = np.array(norm["VITAL_MIN"])
-    vmax = np.array(norm["VITAL_MAX"])
+    vmin = np.array(norm["VITAL_MIN"], dtype="float32")
+    vmax = np.array(norm["VITAL_MAX"], dtype="float32")
 
     with get_cursor(commit=False) as cur:
         sequence = load_patient_sequence(cur, patient_id, vitals_order)
@@ -100,31 +108,40 @@ def simulate_digital_twin(patient_id):
         sequence = [sequence[0], sequence[0]]
 
     model = get_lstm_model()
-    results = {}
-    for label, deltas in INTERVENTIONS.items():
+    
+    # Batch all interventions into a single tensor
+    batch_seqs = []
+    labels = list(INTERVENTIONS.keys())
+    expected_len = 39
+
+    for label in labels:
+        deltas = INTERVENTIONS[label]
         modified_seq = [list(v) for v in sequence]
         last_visit = modified_seq[-1]
         for vital_name, delta in deltas.items():
             if vital_name in vitals_order:
                 idx = vitals_order.index(vital_name)
                 last_visit[idx] += delta
-
-        X = np.array([modified_seq], dtype="float32")
+        
+        X = np.array(modified_seq, dtype="float32")
         X_norm = (X - vmin) / (vmax - vmin)
         
-        expected_len = 39
-        current_len = X_norm.shape[1]
+        current_len = X_norm.shape[0]
         if current_len < expected_len:
             pad_width = expected_len - current_len
-            padding = np.zeros((1, pad_width, X_norm.shape[2]), dtype="float32")
-            X_norm = np.concatenate([padding, X_norm], axis=1)
+            padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
+            X_norm = np.concatenate([padding, X_norm], axis=0)
         elif current_len > expected_len:
-            X_norm = X_norm[:, -expected_len:, :]
+            X_norm = X_norm[-expected_len:, :]
+        batch_seqs.append(X_norm)
 
-        pred_norm = model.predict(X_norm, verbose=0)
-        pred_real = pred_norm[0] * (vmax - vmin) + vmin
+    batch_tensor = np.array(batch_seqs, dtype="float32")
+    preds_norm = model.predict(batch_tensor, verbose=0)
+    preds_real = preds_norm * (vmax - vmin) + vmin
 
-        results[label] = dict(zip(vitals_order, [float(x) for x in pred_real]))
+    results = {}
+    for i, label in enumerate(labels):
+        results[label] = dict(zip(vitals_order, [float(x) for x in preds_real[i]]))
 
     return results
 

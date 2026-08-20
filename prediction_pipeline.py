@@ -183,12 +183,36 @@ def sync_observations_to_vitals(patient_id: str, conn=None):
             _do_sync(cur)
 
 
+_RISK_BUNDLE_CACHE = None
+_FRAM_DEFAULTS_CACHE = None
+
+def get_risk_bundle():
+    global _RISK_BUNDLE_CACHE
+    if _RISK_BUNDLE_CACHE is None:
+        _RISK_BUNDLE_CACHE = joblib.load(RISK_MODEL_PATH)
+    return _RISK_BUNDLE_CACHE
+
+def get_framingham_defaults():
+    global _FRAM_DEFAULTS_CACHE
+    if _FRAM_DEFAULTS_CACHE is None:
+        if FRAMINGHAM_CSV.exists():
+            fram_df = pd.read_csv(FRAMINGHAM_CSV).dropna()
+            _FRAM_DEFAULTS_CACHE = fram_df.median(numeric_only=True).to_dict()
+        else:
+            _FRAM_DEFAULTS_CACHE = {
+                "age": 50, "male": 0, "cigsPerDay": 0, "BPMeds": 0,
+                "prevalentStroke": 0, "prevalentHyp": 0, "diabetes": 0,
+                "totChol": 235.0, "sysBP": 132.0, "diaBP": 82.0,
+                "BMI": 25.8, "heartRate": 75.0, "glucose": 80.0
+            }
+    return _FRAM_DEFAULTS_CACHE
+
 def run_prediction_for_patient(patient_id: str) -> dict:
     """
     Runs risk prediction using PostgreSQL pooled connection.
     Inserts result into predictions table.
     """
-    risk_bundle = joblib.load(RISK_MODEL_PATH)
+    risk_bundle = get_risk_bundle()
     model = risk_bundle["model"]
     feature_names = risk_bundle["feature_names"]
 
@@ -203,8 +227,7 @@ def run_prediction_for_patient(patient_id: str) -> dict:
         num_visits_row = cur.fetchone()
         num_visits = num_visits_row["count"] if num_visits_row else 0
 
-        fram_df = pd.read_csv(FRAMINGHAM_CSV).dropna()
-        defaults = fram_df.median(numeric_only=True).to_dict()
+        defaults = get_framingham_defaults()
 
         patient_features = set()
 

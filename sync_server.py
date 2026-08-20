@@ -80,6 +80,10 @@ app.state.limiter = limiter
 # Register the 429 error handler to return a JSON body (not plain text).
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+from fastapi.middleware.gzip import GZipMiddleware
+
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -106,6 +110,26 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+@app.on_event("startup")
+def setup_indexes_and_cache():
+    try:
+        with get_cursor(commit=True) as cur:
+            indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_patients_pid ON patients(patient_id)",
+                "CREATE INDEX IF NOT EXISTS idx_visits_pid ON visits(patient_id)",
+                "CREATE INDEX IF NOT EXISTS idx_visits_ts ON visits(visit_timestamp)",
+                "CREATE INDEX IF NOT EXISTS idx_observations_pid ON observations(patient_id)",
+                "CREATE INDEX IF NOT EXISTS idx_vitals_vid ON vitals(visit_id)",
+                "CREATE INDEX IF NOT EXISTS idx_predictions_pid ON predictions(patient_id)",
+            ]
+            for idx_sql in indexes:
+                try:
+                    cur.execute(idx_sql)
+                except Exception:
+                    pass
+    except Exception as e:
+        print("[Startup] Index setup note:", e)
 
 
 # ---------------------------------------------------------------------------
