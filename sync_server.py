@@ -131,6 +131,20 @@ def setup_indexes_and_cache():
     except Exception as e:
         print("[Startup] Index setup note:", e)
 
+    # Pre-warm ML models, defaults, LSTM and TreeExplainer into memory for 0ms cold-start
+    try:
+        from prediction_pipeline import get_risk_bundle, get_framingham_defaults, get_tree_explainer
+        from intervention_ranking import get_models as get_ranking_models, get_norm_constants
+        rb = get_risk_bundle()
+        get_framingham_defaults()
+        if rb and "model" in rb:
+            get_tree_explainer(rb["model"])
+        get_ranking_models()
+        get_norm_constants()
+        print("[Startup] All ML models, LSTM, and SHAP Explainers successfully pre-warmed in memory.")
+    except Exception as e:
+        print("[Startup] ML pre-warm note:", e)
+
 
 # ---------------------------------------------------------------------------
 # Startup: HTTPS enforcement warning
@@ -1273,10 +1287,16 @@ def bulk_download_patients(
     }
 
 
+class SafeStaticFiles(StaticFiles):
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return
+        await super().__call__(scope, receive, send)
+
 # Mount photos directory and static files at root (after API routes so API routes take precedence)
 PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/photos", StaticFiles(directory=PHOTOS_DIR), name="photos")
-app.mount("/", StaticFiles(directory=Path(__file__).parent, html=True), name="static")
+app.mount("/photos", SafeStaticFiles(directory=PHOTOS_DIR), name="photos")
+app.mount("/", SafeStaticFiles(directory=Path(__file__).parent, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

@@ -149,6 +149,30 @@ def build_risk_features(feature_names, defaults, age, male, sysBP, diaBP, bmi, h
 
 _cached_lstm = None
 _cached_risk_bundle = None
+_cached_norm = None
+_cached_defaults = None
+
+def get_norm_constants():
+    global _cached_norm
+    if _cached_norm is None:
+        with open(NORM_PATH) as f:
+            _cached_norm = json.load(f)
+    return _cached_norm
+
+def get_framingham_defaults():
+    global _cached_defaults
+    if _cached_defaults is None:
+        if FRAMINGHAM_CSV.exists():
+            fram_df = pd.read_csv(FRAMINGHAM_CSV).dropna()
+            _cached_defaults = fram_df.median(numeric_only=True).to_dict()
+        else:
+            _cached_defaults = {
+                "age": 50, "male": 0, "cigsPerDay": 0, "BPMeds": 0,
+                "prevalentStroke": 0, "prevalentHyp": 0, "diabetes": 0,
+                "totChol": 235.0, "sysBP": 132.0, "diaBP": 82.0,
+                "BMI": 25.8, "heartRate": 75.0, "glucose": 80.0
+            }
+    return _cached_defaults
 
 def get_models():
     global _cached_lstm, _cached_risk_bundle
@@ -159,11 +183,10 @@ def get_models():
     return _cached_lstm, _cached_risk_bundle
 
 def rank_interventions_for_patient(patient_id):
-    with open(NORM_PATH) as f:
-        norm = json.load(f)
+    norm = get_norm_constants()
     vitals_order = norm["vitals_order"]
-    vmin = np.array(norm["VITAL_MIN"])
-    vmax = np.array(norm["VITAL_MAX"])
+    vmin = np.array(norm["VITAL_MIN"], dtype="float32")
+    vmax = np.array(norm["VITAL_MAX"], dtype="float32")
 
     with get_cursor(commit=False) as cur:
         sequence = load_patient_sequence(cur, patient_id, vitals_order)
@@ -178,14 +201,14 @@ def rank_interventions_for_patient(patient_id):
     lstm_model, risk_bundle = get_models()
     risk_model = risk_bundle["model"]
     feature_names = risk_bundle["feature_names"]
+    defaults = get_framingham_defaults()
 
-    fram_df = pd.read_csv(FRAMINGHAM_CSV).dropna()
-    defaults = fram_df.median(numeric_only=True).to_dict()
+    labels = list(INTERVENTIONS.keys())
+    expected_len = 39
+    batch_seqs = []
 
-    baseline_risk = None
-    results = []
-
-    for label, deltas in INTERVENTIONS.items():
+    for label in labels:
+        deltas = INTERVENTIONS[label]
         modified_seq = [list(v) for v in sequence]
         last_visit = modified_seq[-1]
         for vital_name, delta in deltas.items():
@@ -193,44 +216,54 @@ def rank_interventions_for_patient(patient_id):
                 idx = vitals_order.index(vital_name)
                 last_visit[idx] += delta
 
-        X = np.array([modified_seq], dtype="float32")
+        X = np.array(modified_seq, dtype="float32")
         X_norm = (X - vmin) / (vmax - vmin)
 
-        expected_len = 39
-        current_len = X_norm.shape[1]
+        current_len = X_norm.shape[0]
         if current_len < expected_len:
             pad_width = expected_len - current_len
-            padding = np.zeros((1, pad_width, X_norm.shape[2]), dtype="float32")
-            X_norm = np.concatenate([padding, X_norm], axis=1)
+            padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
+            X_norm = np.concatenate([padding, X_norm], axis=0)
         elif current_len > expected_len:
-            X_norm = X_norm[:, -expected_len:, :]
+            X_norm = X_norm[-expected_len:, :]
+        batch_seqs.append(X_norm)
 
-        pred_norm = lstm_model.predict(X_norm, verbose=0)
-        pred_real = pred_norm[0] * (vmax - vmin) + vmin
-        pred_dict = dict(zip(vitals_order, [float(x) for x in pred_real]))
+    batch_tensor = np.array(batch_seqs, dtype="float32")
+    preds_norm = lstm_model.predict(batch_tensor, verbose=0)
+    preds_real = preds_norm * (vmax - vmin) + vmin
 
-        risk_features = build_risk_features(
-            feature_names, defaults, age, male,
-            pred_dict["systolic_bp"], pred_dict["diastolic_bp"],
-            pred_dict["bmi"], pred_dict["heart_rate"],
-        )
-        risk_prob = float(risk_model.predict_proba(risk_features)[0, 1])
+    # Build batched risk features
+    feature_rows = []
+    pred_dicts = []
+    for i, label in enumerate(labels):
+        p_dict = dict(zip(vitals_order, [float(x) for x in preds_real[i]]))
+        pred_dicts.append(p_dict)
+        
+        row = defaults.copy()
+        row["age"] = age
+        row["male"] = male
+        row["sysBP"] = p_dict["systolic_bp"]
+        row["diaBP"] = p_dict["diastolic_bp"]
+        row["BMI"] = p_dict["bmi"]
+        row["heartRate"] = p_dict["heart_rate"]
+        row = compute_clinical_features(row)
+        feature_rows.append([row.get(f, 0.0) for f in feature_names])
 
-        if label == "baseline (no intervention)":
-            baseline_risk = risk_prob
+    X_all = pd.DataFrame(feature_rows, columns=feature_names)
+    risk_probs = risk_model.predict_proba(X_all)[:, 1]
 
+    results = []
+    baseline_risk = float(risk_probs[0])
+
+    for i, label in enumerate(labels):
+        r_prob = float(risk_probs[i])
         results.append({
             "scenario": label,
-            "risk_score": risk_prob,
-            "predicted_vitals": pred_dict,
+            "risk_score": r_prob,
+            "baseline_risk_score": baseline_risk,
+            "risk_delta": baseline_risk - r_prob,
+            "predicted_vitals": pred_dicts[i],
         })
-
-    if baseline_risk is None:
-        baseline_risk = results[0]["risk_score"] if results else 0.0
-
-    for r in results:
-        r["baseline_risk_score"] = baseline_risk
-        r["risk_delta"] = baseline_risk - r["risk_score"]
 
     results.sort(key=lambda x: x["risk_score"])
     return results

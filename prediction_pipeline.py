@@ -183,8 +183,16 @@ def sync_observations_to_vitals(patient_id: str, conn=None):
             _do_sync(cur)
 
 
+_TREE_EXPLAINER_CACHE = None
 _RISK_BUNDLE_CACHE = None
 _FRAM_DEFAULTS_CACHE = None
+
+def get_tree_explainer(model):
+    global _TREE_EXPLAINER_CACHE
+    if _TREE_EXPLAINER_CACHE is None:
+        tree_est = model.named_estimators_['rf'] if hasattr(model, 'named_estimators_') and 'rf' in model.named_estimators_ else (model.estimators_[0] if hasattr(model, 'estimators_') else model)
+        _TREE_EXPLAINER_CACHE = shap.TreeExplainer(tree_est)
+    return _TREE_EXPLAINER_CACHE
 
 def get_risk_bundle():
     global _RISK_BUNDLE_CACHE
@@ -281,8 +289,7 @@ def run_prediction_for_patient(patient_id: str) -> dict:
         risk_prob = float(model.predict_proba(X)[0, 1])
 
         try:
-            tree_est = model.named_estimators_['rf'] if hasattr(model, 'named_estimators_') and 'rf' in model.named_estimators_ else (model.estimators_[0] if hasattr(model, 'estimators_') else model)
-            explainer = shap.TreeExplainer(tree_est)
+            explainer = get_tree_explainer(model)
             shap_values = explainer.shap_values(X)
 
             if isinstance(shap_values, list):
