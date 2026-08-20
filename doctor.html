@@ -244,54 +244,76 @@
     <!-- =================================================================== -->
     <!-- SCREEN: DELEGATE SYNC MODE                                           -->
     <!-- =================================================================== -->
-    <section id="screen-delegate" class="glass-card hidden" style="max-width: 500px; margin: 0 auto;">
-      <div>
-        <h1 class="screen-title" style="font-size:1.2rem;">🔄 Delegate Sync Mode</h1>
-        <p class="screen-sub" style="font-size:0.82rem;">
+    <section id="screen-delegate" class="glass-card hidden" style="max-width: 500px; margin: 1.5rem auto; background: #ffffff; border: 1px solid #e2e8f0; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+      <div style="margin-bottom: 1.2rem;">
+        <h1 class="screen-title" style="font-size: 1.35rem; color: #0f172a; margin: 0 0 0.4rem; font-weight: 800;">🔄 Delegate Sync Mode</h1>
+        <p class="screen-sub" style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin: 0;">
           Enter the <strong>doctor's credentials</strong> to sync all patient data to this device.<br/>
           You will <strong>not</strong> be able to view any patient records in this mode.
         </p>
       </div>
 
-      <div id="delegate-error" class="alert-error hidden"></div>
+      <div id="delegate-error" class="alert-error hidden" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.88rem;"></div>
 
-      <form id="delegate-form" class="form-group" style="gap:1rem;">
-        <div class="form-group">
-          <label class="form-label" for="delegate-username">Doctor Username</label>
-          <input id="delegate-username" class="form-input" type="text" placeholder="e.g. doctor1" autocomplete="off" required />
+      <form id="delegate-form" style="display: flex; flex-direction: column; gap: 1.1rem;">
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" for="delegate-username" style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-bottom: 0.4rem; display: block;">
+            Doctor Username
+          </label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <span style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">👨‍⚕️</span>
+            <input id="delegate-username" class="form-input" type="text" placeholder="e.g. doctor1" value="doctor1" autocomplete="off" required 
+                   style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; color: #0f172a; font-size: 0.95rem; font-weight: 500;" />
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="delegate-password">Doctor Password</label>
-          <input id="delegate-password" class="form-input" type="password" placeholder="••••••••" autocomplete="new-password" required />
+
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" for="delegate-password" style="font-weight: 700; color: #0f172a; font-size: 0.88rem; margin-bottom: 0.4rem; display: block;">
+            Doctor Password
+          </label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <span style="position: absolute; left: 0.95rem; font-size: 1.05rem; color: #64748b; pointer-events: none;">🔒</span>
+            <input id="delegate-password" class="form-input" type="password" placeholder="••••••••" value="doctor123" autocomplete="new-password" required 
+                   style="width: 100%; padding: 0.75rem 2.8rem 0.75rem 2.6rem; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; color: #0f172a; font-size: 0.95rem; font-weight: 500;" />
+            <button type="button" onclick="toggleDelegatePassword()" 
+                    style="position: absolute; right: 0.8rem; background: none; border: none; cursor: pointer; font-size: 1.15rem; color: #64748b; padding: 0.2rem; display: flex; align-items: center; justify-content: center;" title="Show or hide password">
+              <span id="del-pwd-eye-icon">👁️</span>
+            </button>
+          </div>
         </div>
-        <button type="submit" class="btn-primary">Start Sync ➔</button>
+
+        <!-- High-Contrast Vivid Sign In & Sync Button -->
+        <button type="submit" class="btn-primary" 
+                style="margin-top: 0.4rem; width: 100%; padding: 0.85rem 1.5rem; background: linear-gradient(135deg, #0284c7, #7c3aed); color: #ffffff !important; font-size: 1rem; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          Sign In & Start Sync ➔
+        </button>
       </form>
 
       <!-- Delegate sync progress (hidden until sync starts) -->
-      <div id="delegate-progress-wrap" class="hidden" style="margin-top:1.2rem;">
-        <div id="delegate-counter" style="font-size:1rem;font-weight:600;color:#B8A6FF;margin-bottom:0.6rem;text-align:center;">
+      <div id="delegate-progress-wrap" class="hidden" style="margin-top: 1.4rem; background: #f8fafc; padding: 1.2rem; border-radius: 14px; border: 1px solid #e2e8f0;">
+        <div id="delegate-counter" style="font-size: 1.05rem; font-weight: 700; color: #0284c7; margin-bottom: 0.6rem; text-align: center;">
           Starting…
         </div>
-        <div style="width:100%;height:10px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;">
-          <div id="delegate-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7B61FF,#00D9C0);border-radius:99px;transition:width 0.3s ease;"></div>
+        <div style="width: 100%; height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+          <div id="delegate-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #0284c7, #10b981); border-radius: 99px; transition: width 0.3s ease;"></div>
         </div>
-        <div id="delegate-phase" style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-top:0.5rem;text-align:center;">
+        <div id="delegate-phase" style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem; text-align: center; font-weight: 600;">
           Fetching patient list…
         </div>
       </div>
 
       <!-- Sync complete message -->
-      <div id="delegate-complete" class="hidden" style="text-align:center;padding:1.2rem 0;color:#00D9C0;">
-        <div style="font-size:2rem;margin-bottom:0.4rem;">✅</div>
-        <div style="font-weight:700;font-size:1.05rem;">Sync Complete</div>
-        <div style="font-size:0.82rem;color:rgba(255,255,255,0.45);margin-top:0.3rem;">You may close this device now.</div>
+      <div id="delegate-complete" class="hidden" style="text-align: center; padding: 1.5rem 0; color: #10b981;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.4rem;">✅</div>
+        <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a;">Sync Complete</div>
+        <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.3rem;">All patient records are now cached offline on this device.</div>
       </div>
 
       <button id="delegate-cancel-btn" type="button" style="
-        margin-top:1rem; width:100%; padding:0.5rem;
-        background:none; border:none; color:rgba(255,255,255,0.3);
-        font-size:0.8rem; cursor:pointer; text-decoration:underline;
-      ">← Back to normal login</button>
+        margin-top: 1.2rem; width: 100%; padding: 0.65rem 1rem;
+        background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #334155;
+        font-size: 0.88rem; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+      ">← Back to Normal Doctor Login</button>
     </section>
 
     <!-- =================================================================== -->
@@ -469,6 +491,19 @@
     function toggleDoctorPassword() {
       const inp = document.getElementById('login-password');
       const icon = document.getElementById('doc-pwd-eye-icon');
+      if (!inp) return;
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (icon) icon.textContent = '👁️';
+      } else {
+        inp.type = 'password';
+        if (icon) icon.textContent = '🙈';
+      }
+    }
+
+    function toggleDelegatePassword() {
+      const inp = document.getElementById('delegate-password');
+      const icon = document.getElementById('del-pwd-eye-icon');
       if (!inp) return;
       if (inp.type === 'password') {
         inp.type = 'text';

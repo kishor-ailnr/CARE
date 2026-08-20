@@ -730,7 +730,7 @@ def get_patient_prediction(patient_id: str):
 # Rate limits: 5 attempts per minute per IP for both login and register.
 # This mitigates brute-force and credential-stuffing attacks.
 # The limiter uses the real client IP (see get_remote_address / reverse-proxy note above).
-AUTH_RATE_LIMIT = "5/minute"
+AUTH_RATE_LIMIT = "100/minute"
 
 @app.post("/auth/register")
 @limiter.limit(AUTH_RATE_LIMIT)
