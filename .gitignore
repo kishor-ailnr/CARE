@@ -17,6 +17,7 @@ __pycache__/
 care.db
 data/synthea_output/
 data/*.json
+synthea/
 
 # OS / Editor files
 .DS_Store
