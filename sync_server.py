@@ -1289,6 +1289,9 @@ def bulk_download_patients(
 
 class SafeStaticFiles(StaticFiles):
     async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1000})
+            return
         if scope["type"] != "http":
             return
         await super().__call__(scope, receive, send)
