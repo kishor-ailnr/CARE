@@ -7,7 +7,7 @@
   <title>CARE — Sign In</title>
 
   <!-- PWA Manifest & Theme -->
-  <link rel="manifest" href="manifest.json" crossorigin="use-credentials" />
+  <link rel="manifest" href='data:application/manifest+json,{"name":"CARE — Clinical AI","short_name":"CARE","start_url":"./index.html","display":"standalone","background_color":"#0b0f1f","theme_color":"#0b0f1f"}' />
   <meta name="theme-color" content="#0b0f1f" />
   <meta name="description"
     content="CARE: Community-based Automated Risk Engine for ASHA workers and clinical doctors." />
@@ -790,6 +790,19 @@
       };
 
       try {
+        const isStaticHost = window.location.hostname.includes('netlify.app') || 
+                             window.location.hostname.includes('github.io') || 
+                             window.location.hostname.includes('pages.dev');
+        const hasCustomBackend = !!localStorage.getItem('care_api_base_url');
+
+        // If on static hosting without custom remote API, or matching demo account, authenticate instantly
+        if ((isStaticHost && !hasCustomBackend) || 
+            (username === 'asha1' && password === 'asha123') || 
+            (username === 'doctor1' && password === 'doctor123')) {
+          const loggedIn = await performOfflineLogin();
+          if (loggedIn) return;
+        }
+
         let res = null;
         try {
           const controller = new AbortController();
@@ -802,21 +815,18 @@
           });
           clearTimeout(timeoutId);
         } catch (netErr) {
-          // Network failure / timeout (offline or server not started)
           const loggedIn = await performOfflineLogin();
           if (loggedIn) return;
           throw new Error(`Cannot reach backend server (${API_BASE_URL}). For offline demo, use: asha1 / asha123 or doctor1 / doctor123`);
         }
 
         if (res && res.status === 404) {
-          // 404 Not Found on static host (e.g. Netlify)
           const loggedIn = await performOfflineLogin();
           if (loggedIn) return;
           throw new Error(`API endpoint not found on ${API_BASE_URL}. For offline demo, use: asha1 / asha123 or doctor1 / doctor123`);
         }
 
         if (!res.ok) {
-          // If server returned 401/400 but matches demo credentials, fallback
           if (username === 'asha1' && password === 'asha123' || username === 'doctor1' && password === 'doctor123') {
             const loggedIn = await performOfflineLogin();
             if (loggedIn) return;

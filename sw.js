@@ -7,7 +7,7 @@
  *  - API calls        → Pass-through (let app.js handle with IndexedDB fallback)
  */
 
-const CACHE_NAME = 'care-app-shell-v17';
+const CACHE_NAME = 'care-app-shell-v18';
 const PHOTO_CACHE_NAME = 'care-doctor-photos-v1';
 const ASSETS_TO_CACHE = [
   './',
@@ -22,8 +22,7 @@ const ASSETS_TO_CACHE = [
   './app.js',
   './doctor_app.js',
   './doctor_patient_detail.js',
-  './db.js',
-  './manifest.json'
+  './db.js'
 ];
 
 // 1. Install event: Cache App Shell safely
