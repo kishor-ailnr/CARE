@@ -4,9 +4,21 @@
  */
 
 // Easily configurable API Base URL constant
-var API_BASE_URL = window.API_BASE_URL || ((window.location.origin && window.location.origin !== "null" && !window.location.origin.startsWith("file:"))
-  ? window.location.origin
-  : "http://127.0.0.1:8000");
+function getCareApiBaseUrl() {
+  const custom = localStorage.getItem('care_api_base_url');
+  if (custom) return custom.replace(/\/+$/, '');
+  if (window.API_BASE_URL) return window.API_BASE_URL.replace(/\/+$/, '');
+  if (window.location.origin && 
+      window.location.origin !== "null" && 
+      !window.location.origin.startsWith("file:") &&
+      !window.location.hostname.includes('netlify.app') && 
+      !window.location.hostname.includes('github.io') &&
+      !window.location.hostname.includes('pages.dev')) {
+    return window.location.origin;
+  }
+  return "http://127.0.0.1:8000";
+}
+var API_BASE_URL = getCareApiBaseUrl();
 window.API_BASE_URL = API_BASE_URL;
 
 // Category field definitions matching extend_schema.py CATEGORIES dict
@@ -360,7 +372,7 @@ function handleLogout() {
   }
 
   currentPatient = null;
-  window.location.href = '/';
+  window.location.href = 'index.html';
 }
 
 // -----------------------------------------------------------------------------

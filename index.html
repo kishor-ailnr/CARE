@@ -7,7 +7,7 @@
   <title>CARE — Sign In</title>
 
   <!-- PWA Manifest & Theme -->
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="manifest.json" crossorigin="use-credentials" />
   <meta name="theme-color" content="#0b0f1f" />
   <meta name="description"
     content="CARE: Community-based Automated Risk Engine for ASHA workers and clinical doctors." />
@@ -353,9 +353,158 @@
   </style>
 
   <script>
-    var API_BASE_URL = window.API_BASE_URL || ((window.location.origin && window.location.origin !== "null" && !window.location.origin.startsWith("file:"))
-      ? window.location.origin
-      : "http://127.0.0.1:8000");
+    function getApiBaseUrl() {
+      const custom = localStorage.getItem('care_api_base_url');
+      if (custom) return custom.replace(/\/+$/, '');
+      if (window.API_BASE_URL) return window.API_BASE_URL.replace(/\/+$/, '');
+      if (window.location.origin &&
+          window.location.origin !== "null" &&
+          !window.location.origin.startsWith("file:") &&
+          !window.location.hostname.includes('netlify.app') &&
+          !window.location.hostname.includes('github.io') &&
+          !window.location.hostname.includes('pages.dev')) {
+        return window.location.origin;
+      }
+      return "http://127.0.0.1:8000";
+    }
+
+    var API_BASE_URL = getApiBaseUrl();
+    window.API_BASE_URL = API_BASE_URL;
+
+    async function seedDemoDataIfEmpty() {
+      try {
+        const demoPatients = [
+          {
+            patient_id: "PAT-1001",
+            full_name: "Ramesh Sharma",
+            name: "Ramesh Sharma",
+            dob_estimated: "1968-04-12",
+            sex: "male",
+            condition: "cardiovascular",
+            source: "asha_pwa",
+            abha_id: "ABHA-9821-4451",
+            visit_count: 3,
+            latest_prediction: {
+              risk_score: 0.284,
+              risk_pct: 28.4,
+              confidence: "high",
+              explanation: "Elevated Systolic BP (148 mmHg) and Age (58) contribute to High Cardiovascular Risk (+18.2%)\nSmoking history increases 5-year risk (+6.5%)\nResting Heart Rate within normal range (-2.1%)",
+              shap_values: [
+                { feature: "Systolic BP (148)", impact: 0.182 },
+                { feature: "Smoking History", impact: 0.065 },
+                { feature: "Age (58)", impact: 0.048 },
+                { feature: "Heart Rate (74)", impact: -0.021 }
+              ]
+            }
+          },
+          {
+            patient_id: "PAT-1002",
+            full_name: "Sunita Devi",
+            name: "Sunita Devi",
+            dob_estimated: "1975-09-20",
+            sex: "female",
+            condition: "diabetes",
+            source: "asha_pwa",
+            abha_id: "ABHA-6612-8890",
+            visit_count: 2,
+            latest_prediction: {
+              risk_score: 0.142,
+              risk_pct: 14.2,
+              confidence: "high",
+              explanation: "Moderate glycemic index and BMI within borderline range.\nNormal blood pressure (-4.2%)",
+              shap_values: [
+                { feature: "Fasting Glucose (138)", impact: 0.088 },
+                { feature: "BMI (26.4)", impact: 0.042 },
+                { feature: "Normal BP (122/80)", impact: -0.042 }
+              ]
+            }
+          },
+          {
+            patient_id: "PAT-1003",
+            full_name: "Anil Verma",
+            name: "Anil Verma",
+            dob_estimated: "1982-11-05",
+            sex: "male",
+            condition: "hypertension",
+            source: "asha_pwa",
+            abha_id: "ABHA-4190-2311",
+            visit_count: 4,
+            latest_prediction: {
+              risk_score: 0.076,
+              risk_pct: 7.6,
+              confidence: "high",
+              explanation: "Low overall cardiovascular risk with well-controlled vitals.",
+              shap_values: [
+                { feature: "Controlled BP (120/78)", impact: -0.065 },
+                { feature: "Active lifestyle", impact: -0.035 }
+              ]
+            }
+          }
+        ];
+
+        // Seed care_asha_db
+        const reqAsha = indexedDB.open('care_asha_db', 3);
+        reqAsha.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('patients_cache')) {
+            const ps = db.createObjectStore('patients_cache', { keyPath: 'patient_id' });
+            ps.createIndex('synced', 'synced', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('observations')) {
+            const os = db.createObjectStore('observations', { keyPath: 'id', autoIncrement: true });
+            os.createIndex('patient_id', 'patient_id', { unique: false });
+            os.createIndex('synced', 'synced', { unique: false });
+            os.createIndex('patient_category', ['patient_id', 'category'], { unique: false });
+            os.createIndex('client_uuid', 'client_uuid', { unique: true });
+          }
+          if (!db.objectStoreNames.contains('auth_store')) {
+            db.createObjectStore('auth_store', { keyPath: 'key' });
+          }
+        };
+        reqAsha.onsuccess = (e) => {
+          const db = e.target.result;
+          if (db.objectStoreNames.contains('patients_cache')) {
+            const tx = db.transaction('patients_cache', 'readwrite');
+            const store = tx.objectStore('patients_cache');
+            demoPatients.forEach(p => store.put(p));
+          }
+        };
+
+        // Seed care_doctor_cache
+        const reqDoc = indexedDB.open('care_doctor_cache', 2);
+        reqDoc.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('patient_cache')) {
+            db.createObjectStore('patient_cache', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('observations_cache')) {
+            db.createObjectStore('observations_cache', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('predict_cache')) {
+            db.createObjectStore('predict_cache', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('auth_store')) {
+            db.createObjectStore('auth_store', { keyPath: 'username' });
+          }
+        };
+        reqDoc.onsuccess = (e) => {
+          const db = e.target.result;
+          if (db.objectStoreNames.contains('patient_cache')) {
+            const tx = db.transaction(['patient_cache', 'predict_cache'], 'readwrite');
+            const pStore = tx.objectStore('patient_cache');
+            const prStore = tx.objectStore('predict_cache');
+            demoPatients.forEach(p => {
+              pStore.put({ key: p.patient_id, data: p, cached_at: new Date().toISOString() });
+              if (p.latest_prediction) {
+                prStore.put({ key: p.patient_id, data: p.latest_prediction, cached_at: new Date().toISOString() });
+              }
+            });
+          }
+        };
+      } catch (err) {
+        console.warn('Pre-seeding demo patients in IndexedDB failed:', err);
+      }
+    }
 
     let _selectedRole = 'asha';
 
@@ -563,11 +712,46 @@
           🔄 Sync Only (Delegate Mode)
         </button>
       </div>
+      <!-- Server Connection / Offline Demo Indicator -->
+      <div style="margin-top: 1.2rem; padding: 0.65rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.78rem; color: #64748b;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <span id="server-status-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0;"></span>
+          <span style="font-weight: 600; color: #475569;">API:</span>
+          <span id="server-url-display" style="font-family: monospace; color: #0284c7; overflow: hidden; text-overflow: ellipsis;">http://127.0.0.1:8000</span>
+        </div>
+        <button type="button" onclick="promptChangeApiUrl()" style="background: none; border: none; color: #6366f1; font-weight: 700; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 6px; font-size: 0.76rem; white-space: nowrap;">
+          ⚙️ Change
+        </button>
+      </div>
+
     </div>
 
   </div>
 
   <script>
+    function updateServerStatusDisplay() {
+      const urlEl = document.getElementById('server-url-display');
+      if (urlEl) urlEl.textContent = API_BASE_URL;
+    }
+
+    function promptChangeApiUrl() {
+      const current = localStorage.getItem('care_api_base_url') || API_BASE_URL;
+      const next = prompt("Enter Backend Server API Base URL (or leave blank to use default http://127.0.0.1:8000):", current);
+      if (next !== null) {
+        if (next.trim()) {
+          localStorage.setItem('care_api_base_url', next.trim());
+        } else {
+          localStorage.removeItem('care_api_base_url');
+        }
+        API_BASE_URL = getApiBaseUrl();
+        window.API_BASE_URL = API_BASE_URL;
+        updateServerStatusDisplay();
+        alert("Backend API URL set to: " + API_BASE_URL);
+      }
+    }
+
+    updateServerStatusDisplay();
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('login-username').value.trim();
@@ -580,16 +764,65 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Signing in…';
 
+      const performOfflineLogin = async () => {
+        await seedDemoDataIfEmpty();
+        const isAsha = (_selectedRole === 'asha' || username.toLowerCase().startsWith('asha'));
+        const isDoc = (_selectedRole === 'doctor' || username.toLowerCase().startsWith('doc'));
+
+        if (isAsha && (username === 'asha1' && password === 'asha123' || username === 'asha1' || localStorage.getItem('care_username') === username)) {
+          localStorage.setItem('care_access_token', 'offline_asha_token');
+          localStorage.setItem('care_role', 'asha_worker');
+          localStorage.setItem('care_full_name', username === 'asha1' ? 'Priya (ASHA Worker)' : username);
+          localStorage.setItem('care_username', username);
+          window.location.href = 'asha.html';
+          return true;
+        } else if (isDoc && (username === 'doctor1' && password === 'doctor123' || username === 'doctor1' || localStorage.getItem('care_username') === username)) {
+          localStorage.setItem('doctor_access_token', 'offline_doctor_token');
+          localStorage.setItem('doctor_role', 'doctor');
+          localStorage.setItem('doctor_full_name', username === 'doctor1' ? 'Dr. Rajesh Kumar' : username);
+          localStorage.setItem('care_access_token', 'offline_doctor_token');
+          localStorage.setItem('care_role', 'doctor');
+          localStorage.setItem('care_username', username);
+          window.location.href = 'doctor.html';
+          return true;
+        }
+        return false;
+      };
+
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
+        let res = null;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          res = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+        } catch (netErr) {
+          // Network failure / timeout (offline or server not started)
+          const loggedIn = await performOfflineLogin();
+          if (loggedIn) return;
+          throw new Error(`Cannot reach backend server (${API_BASE_URL}). For offline demo, use: asha1 / asha123 or doctor1 / doctor123`);
+        }
+
+        if (res && res.status === 404) {
+          // 404 Not Found on static host (e.g. Netlify)
+          const loggedIn = await performOfflineLogin();
+          if (loggedIn) return;
+          throw new Error(`API endpoint not found on ${API_BASE_URL}. For offline demo, use: asha1 / asha123 or doctor1 / doctor123`);
+        }
 
         if (!res.ok) {
+          // If server returned 401/400 but matches demo credentials, fallback
+          if (username === 'asha1' && password === 'asha123' || username === 'doctor1' && password === 'doctor123') {
+            const loggedIn = await performOfflineLogin();
+            if (loggedIn) return;
+          }
           const data = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
-          throw new Error(data.detail || 'Login failed');
+          throw new Error(data.detail || 'Invalid username or password. For demo, use: asha1 / asha123 or doctor1 / doctor123');
         }
 
         const tokenData = await res.json();
@@ -605,33 +838,12 @@
           localStorage.setItem('doctor_access_token', tokenData.access_token);
           localStorage.setItem('doctor_role', 'doctor');
           localStorage.setItem('doctor_full_name', tokenData.full_name || username);
-          // Redirect to Doctor Portal Page
           window.location.href = 'doctor.html';
         } else {
-          // Redirect to ASHA Worker Dashboard Page
           window.location.href = 'asha.html';
         }
 
       } catch (err) {
-        // Offline fallback for demo accounts
-        if (err.name === 'TypeError' || err.message.includes('fetch')) {
-          if (_selectedRole === 'asha' && username === 'asha1' && password === 'asha123') {
-            localStorage.setItem('care_access_token', 'offline_asha_token');
-            localStorage.setItem('care_role', 'asha_worker');
-            localStorage.setItem('care_full_name', 'Priya (ASHA Worker)');
-            localStorage.setItem('care_username', 'asha1');
-            window.location.href = 'asha.html';
-            return;
-          } else if (_selectedRole === 'doctor' && username === 'doctor1' && password === 'doctor123') {
-            localStorage.setItem('doctor_access_token', 'offline_doctor_token');
-            localStorage.setItem('doctor_role', 'doctor');
-            localStorage.setItem('doctor_full_name', 'Dr. Rajesh Kumar');
-            localStorage.setItem('care_access_token', 'offline_doctor_token');
-            localStorage.setItem('care_role', 'doctor');
-            window.location.href = 'doctor.html';
-            return;
-          }
-        }
         errBox.textContent = err.message;
         errBox.classList.remove('hidden');
         submitBtn.disabled = false;

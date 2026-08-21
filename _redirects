@@ -1,0 +1,5 @@
+# Netlify redirects for CARE PWA
+/index.html   /index.html   200
+/asha.html    /asha.html    200
+/doctor.html  /doctor.html  200
+/patient.html /patient.html 200
