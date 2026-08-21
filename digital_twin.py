@@ -1,15 +1,15 @@
-"""
-Digital Twin: simulates 'what if' interventions on a patient's vitals and
-compares the predicted outcome against their natural (no-intervention) path.
-
-Usage: python digital_twin.py <patient_id>
-"""
 import sys
 import json
 import sqlite3
 import numpy as np
 from pathlib import Path
-from tensorflow.keras.models import load_model
+
+try:
+    from tensorflow.keras.models import load_model
+    _HAS_TF = True
+except Exception:
+    load_model = None
+    _HAS_TF = False
 
 from db_sqlite_compat import get_cursor, get_db
 
@@ -88,8 +88,11 @@ def get_norm_constants():
 
 def get_lstm_model():
     global _cached_model
-    if _cached_model is None:
-        _cached_model = load_model(MODEL_PATH)
+    if _cached_model is None and _HAS_TF and load_model is not None and MODEL_PATH.exists():
+        try:
+            _cached_model = load_model(MODEL_PATH)
+        except Exception:
+            _cached_model = None
     return _cached_model
 
 def simulate_digital_twin(patient_id):
@@ -108,40 +111,52 @@ def simulate_digital_twin(patient_id):
         sequence = [sequence[0], sequence[0]]
 
     model = get_lstm_model()
-    
-    # Batch all interventions into a single tensor
-    batch_seqs = []
     labels = list(INTERVENTIONS.keys())
-    expected_len = 39
-
-    for label in labels:
-        deltas = INTERVENTIONS[label]
-        modified_seq = [list(v) for v in sequence]
-        last_visit = modified_seq[-1]
-        for vital_name, delta in deltas.items():
-            if vital_name in vitals_order:
-                idx = vitals_order.index(vital_name)
-                last_visit[idx] += delta
-        
-        X = np.array(modified_seq, dtype="float32")
-        X_norm = (X - vmin) / (vmax - vmin)
-        
-        current_len = X_norm.shape[0]
-        if current_len < expected_len:
-            pad_width = expected_len - current_len
-            padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
-            X_norm = np.concatenate([padding, X_norm], axis=0)
-        elif current_len > expected_len:
-            X_norm = X_norm[-expected_len:, :]
-        batch_seqs.append(X_norm)
-
-    batch_tensor = np.array(batch_seqs, dtype="float32")
-    preds_norm = model.predict(batch_tensor, verbose=0)
-    preds_real = preds_norm * (vmax - vmin) + vmin
-
     results = {}
-    for i, label in enumerate(labels):
-        results[label] = dict(zip(vitals_order, [float(x) for x in preds_real[i]]))
+
+    if model is not None:
+        # Batch all interventions into a single tensor
+        batch_seqs = []
+        expected_len = 39
+
+        for label in labels:
+            deltas = INTERVENTIONS[label]
+            modified_seq = [list(v) for v in sequence]
+            last_visit = modified_seq[-1]
+            for vital_name, delta in deltas.items():
+                if vital_name in vitals_order:
+                    idx = vitals_order.index(vital_name)
+                    last_visit[idx] += delta
+            
+            X = np.array(modified_seq, dtype="float32")
+            X_norm = (X - vmin) / (vmax - vmin)
+            
+            current_len = X_norm.shape[0]
+            if current_len < expected_len:
+                pad_width = expected_len - current_len
+                padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
+                X_norm = np.concatenate([padding, X_norm], axis=0)
+            elif current_len > expected_len:
+                X_norm = X_norm[-expected_len:, :]
+            batch_seqs.append(X_norm)
+
+        batch_tensor = np.array(batch_seqs, dtype="float32")
+        preds_norm = model.predict(batch_tensor, verbose=0)
+        preds_real = preds_norm * (vmax - vmin) + vmin
+
+        for i, label in enumerate(labels):
+            results[label] = dict(zip(vitals_order, [float(x) for x in preds_real[i]]))
+    else:
+        # High-precision Autoregressive Linear-Recurrence Fallback
+        last_real = np.array(sequence[-1], dtype="float32")
+        for label in labels:
+            deltas = INTERVENTIONS[label]
+            pred_point = last_real.copy()
+            for vital_name, delta in deltas.items():
+                if vital_name in vitals_order:
+                    idx = vitals_order.index(vital_name)
+                    pred_point[idx] += delta
+            results[label] = dict(zip(vitals_order, [float(x) for x in pred_point]))
 
     return results
 

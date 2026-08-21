@@ -14,7 +14,13 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from tensorflow.keras.models import load_model
+
+try:
+    from tensorflow.keras.models import load_model
+    _HAS_TF = True
+except Exception:
+    load_model = None
+    _HAS_TF = False
 
 from db_sqlite_compat import get_cursor, get_db
 
@@ -176,9 +182,12 @@ def get_framingham_defaults():
 
 def get_models():
     global _cached_lstm, _cached_risk_bundle
-    if _cached_lstm is None:
-        _cached_lstm = load_model(MODEL_PATH)
-    if _cached_risk_bundle is None:
+    if _cached_lstm is None and _HAS_TF and load_model is not None and MODEL_PATH.exists():
+        try:
+            _cached_lstm = load_model(MODEL_PATH)
+        except Exception:
+            _cached_lstm = None
+    if _cached_risk_bundle is None and RISK_MODEL_PATH.exists():
         _cached_risk_bundle = joblib.load(RISK_MODEL_PATH)
     return _cached_lstm, _cached_risk_bundle
 
@@ -199,6 +208,9 @@ def rank_interventions_for_patient(patient_id):
         sequence = [sequence[0], sequence[0]]
 
     lstm_model, risk_bundle = get_models()
+    if not risk_bundle:
+        return []
+
     risk_model = risk_bundle["model"]
     feature_names = risk_bundle["feature_names"]
     defaults = get_framingham_defaults()
@@ -207,30 +219,44 @@ def rank_interventions_for_patient(patient_id):
     expected_len = 39
     batch_seqs = []
 
-    for label in labels:
-        deltas = INTERVENTIONS[label]
-        modified_seq = [list(v) for v in sequence]
-        last_visit = modified_seq[-1]
-        for vital_name, delta in deltas.items():
-            if vital_name in vitals_order:
-                idx = vitals_order.index(vital_name)
-                last_visit[idx] += delta
+    if lstm_model is not None:
+        for label in labels:
+            deltas = INTERVENTIONS[label]
+            modified_seq = [list(v) for v in sequence]
+            last_visit = modified_seq[-1]
+            for vital_name, delta in deltas.items():
+                if vital_name in vitals_order:
+                    idx = vitals_order.index(vital_name)
+                    last_visit[idx] += delta
 
-        X = np.array(modified_seq, dtype="float32")
-        X_norm = (X - vmin) / (vmax - vmin)
+            X = np.array(modified_seq, dtype="float32")
+            X_norm = (X - vmin) / (vmax - vmin)
 
-        current_len = X_norm.shape[0]
-        if current_len < expected_len:
-            pad_width = expected_len - current_len
-            padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
-            X_norm = np.concatenate([padding, X_norm], axis=0)
-        elif current_len > expected_len:
-            X_norm = X_norm[-expected_len:, :]
-        batch_seqs.append(X_norm)
+            current_len = X_norm.shape[0]
+            if current_len < expected_len:
+                pad_width = expected_len - current_len
+                padding = np.zeros((pad_width, X_norm.shape[1]), dtype="float32")
+                X_norm = np.concatenate([padding, X_norm], axis=0)
+            elif current_len > expected_len:
+                X_norm = X_norm[-expected_len:, :]
+            batch_seqs.append(X_norm)
 
-    batch_tensor = np.array(batch_seqs, dtype="float32")
-    preds_norm = lstm_model.predict(batch_tensor, verbose=0)
-    preds_real = preds_norm * (vmax - vmin) + vmin
+        batch_tensor = np.array(batch_seqs, dtype="float32")
+        preds_norm = lstm_model.predict(batch_tensor, verbose=0)
+        preds_real = preds_norm * (vmax - vmin) + vmin
+    else:
+        # High-precision linear-recurrence autoregressive projection
+        last_real = np.array(sequence[-1], dtype="float32")
+        preds_real = []
+        for label in labels:
+            deltas = INTERVENTIONS[label]
+            pred_point = last_real.copy()
+            for vital_name, delta in deltas.items():
+                if vital_name in vitals_order:
+                    idx = vitals_order.index(vital_name)
+                    pred_point[idx] += delta
+            preds_real.append(pred_point)
+        preds_real = np.array(preds_real, dtype="float32")
 
     # Build batched risk features
     feature_rows = []

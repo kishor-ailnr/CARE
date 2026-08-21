@@ -9,6 +9,8 @@ from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor, execute_values
 from contextlib import contextmanager
 
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+
 PG_HOST = os.getenv("PG_HOST", "127.0.0.1")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
 PG_DB = os.getenv("PG_DB", "care_postgres")
@@ -21,15 +23,22 @@ _pool = None
 def get_pool():
     global _pool
     if _pool is None or _pool.closed:
-        _pool = ThreadedConnectionPool(
-            minconn=1,
-            maxconn=20,
-            host=PG_HOST,
-            port=PG_PORT,
-            dbname=PG_DB,
-            user=PG_USER,
-            password=PG_PASSWORD,
-        )
+        if DATABASE_URL:
+            # Handle postgres:// to postgresql:// dialect fix if needed
+            dsn = DATABASE_URL
+            if dsn.startswith("postgres://"):
+                dsn = "postgresql://" + dsn[len("postgres://"):]
+            _pool = ThreadedConnectionPool(minconn=1, maxconn=20, dsn=dsn)
+        else:
+            _pool = ThreadedConnectionPool(
+                minconn=1,
+                maxconn=20,
+                host=PG_HOST,
+                port=PG_PORT,
+                dbname=PG_DB,
+                user=PG_USER,
+                password=PG_PASSWORD,
+            )
     return _pool
 
 @contextmanager

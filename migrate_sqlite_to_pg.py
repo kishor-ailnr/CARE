@@ -8,7 +8,8 @@ import time
 import sqlite3
 import psycopg2
 from psycopg2.extras import execute_values
-from db_pg import get_db, init_pg_schema, PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD
+import os
+from db_pg import get_db, init_pg_schema, PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD, DATABASE_URL
 
 SQLITE_DB = "care.db"
 
@@ -23,9 +24,15 @@ def migrate():
     sq_conn.row_factory = sqlite3.Row
     sq_cur = sq_conn.cursor()
 
-    pg_conn = psycopg2.connect(
-        host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PASSWORD
-    )
+    if DATABASE_URL:
+        dsn = DATABASE_URL
+        if dsn.startswith("postgres://"):
+            dsn = "postgresql://" + dsn[len("postgres://"):]
+        pg_conn = psycopg2.connect(dsn)
+    else:
+        pg_conn = psycopg2.connect(
+            host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PASSWORD
+        )
     pg_conn.autocommit = False
     pg_cur = pg_conn.cursor()
 

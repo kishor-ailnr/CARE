@@ -162,7 +162,14 @@ def _get_raw_conn() -> sqlite3.Connection:
 
 @contextmanager
 def get_db():
-    """Context manager providing a wrapped SQLite connection."""
+    """Context manager providing a database connection (Postgres if DATABASE_URL is set, else SQLite)."""
+    import os
+    if os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL"):
+        import db_pg
+        with db_pg.get_db() as conn:
+            yield conn
+        return
+
     raw = _get_raw_conn()
     conn = _SQLiteConn(raw)
     try:
@@ -176,7 +183,14 @@ def get_db():
 
 @contextmanager
 def get_cursor(commit=True):
-    """Context manager providing a dict-cursor (compatible with db_pg.py)."""
+    """Context manager providing a dict-cursor (Postgres if DATABASE_URL is set, else SQLite)."""
+    import os
+    if os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL"):
+        import db_pg
+        with db_pg.get_cursor(commit=commit) as cur:
+            yield cur
+        return
+
     with get_db() as conn:
         cur = conn.cursor()
         yield cur

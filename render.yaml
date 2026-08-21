@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: care-backend
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn sync_server:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: care-postgres
+          property: connectionString
+      - key: CARE_JWT_SECRET
+        generateValue: true
+      - key: CARE_BEHIND_TLS_PROXY
+        value: "true"
+
+databases:
+  - name: care-postgres
+    databaseName: care_postgres
+    user: care_user
+    plan: free
