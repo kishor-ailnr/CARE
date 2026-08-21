@@ -6,7 +6,7 @@
   <title>CARE — Doctor Clinical Dashboard</title>
 
   <!-- PWA Manifest & Theme -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"CARE — Clinical AI","short_name":"CARE","start_url":"./index.html","display":"standalone","background_color":"#0b0f1f","theme_color":"#0b0f1f"}' />
+  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQ0FSRSAtIENsaW5pY2FsIEFJIiwic2hvcnRfbmFtZSI6IkNBUkUiLCJzdGFydF91cmwiOiIuL2luZGV4Lmh0bWwiLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGIwZjFmIiwidGhlbWVfY29sb3IiOiIjMGIwZjFmIn0=" />
   <meta name="theme-color" content="#0b0f1f" />
 
   <!-- Google Fonts & Chart.js CDN -->
@@ -107,7 +107,10 @@
         <span class="doctor-badge">Doctor Portal</span>
       </div>
       <div id="user-info-bar" class="hidden" style="display: flex; align-items: center; gap: 0.8rem;">
-        <span id="doctor-name-display" style="font-size: 0.88rem; color: var(--text-muted);">Dr. User</span>
+        <button id="instant-sync-btn" type="button" onclick="triggerDoctorInstantSync()" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 0.38rem 0.85rem; border-radius: 99px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 8px rgba(2,132,199,0.25); transition: all 0.2s;">
+          ⚡ Instant Sync
+        </button>
+        <span id="doctor-name-display" style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">Dr. User</span>
         <button id="logout-btn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.7rem;">Logout</button>
       </div>
     </header>
@@ -119,6 +122,9 @@
       </button>
       <button id="nav-new-patient-btn" class="nav-btn" type="button">
         🆕 New Patient ID
+      </button>
+      <button id="nav-instant-sync-btn" class="nav-btn" type="button" onclick="triggerDoctorInstantSync()" style="margin-left: auto; background: #f0fdf4; border: 1.5px solid #86efac; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 0.35rem;">
+        ⚡ Instant Sync
       </button>
     </nav>
 
