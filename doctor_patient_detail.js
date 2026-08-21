@@ -530,7 +530,14 @@ window.renderPatientDetailInline = async function(patientId) {
 
     const token = localStorage.getItem('doctor_access_token');
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const baseUrl = window.API_BASE_URL || 'http://127.0.0.1:8000';
+    const baseUrl = localStorage.getItem('care_api_base_url') || window.API_BASE_URL || (
+      (window.location.origin && window.location.origin.startsWith('http') && 
+       !window.location.hostname.includes('netlify.app') && 
+       !window.location.hostname.includes('github.io') &&
+       !window.location.hostname.includes('pages.dev'))
+        ? window.location.origin
+        : 'http://127.0.0.1:8000'
+    );
 
     let patient = null;
     let observations = null;
@@ -547,7 +554,69 @@ window.renderPatientDetailInline = async function(patientId) {
         if (oRes.status === 'fulfilled' && oRes.value.ok) observations = await oRes.value.json();
         if (iRes.status === 'fulfilled' && iRes.value.ok) interventions = await iRes.value.json();
     } catch (e) {
-        console.error("Failed to load patient record", e);
+        console.error("Failed to load patient record online, trying offline cache:", e);
+    }
+
+    // Try IndexedDB cache fallback if offline or server unreachable
+    if (!patient) {
+        try {
+            if (typeof openDoctorDB === 'function') {
+                const db = await openDoctorDB();
+                const pTx = db.transaction('patient_cache', 'readonly');
+                const cached = await new Promise(resolve => {
+                    const r = pTx.objectStore('patient_cache').get(patientId);
+                    r.onsuccess = () => resolve(r.result ? r.result.data : null);
+                    r.onerror = () => resolve(null);
+                });
+                if (cached) {
+                    patient = cached;
+                    if (cached.latest_prediction) {
+                        interventions = cached.interventions || null;
+                    }
+                }
+            }
+        } catch (dbErr) {
+            console.warn("IndexedDB patient fallback check failed:", dbErr);
+        }
+    }
+
+    // Fallback to built-in demo patients if looking up demo ID
+    if (!patient) {
+        const demoMap = {
+            'PAT-1001': {
+                patient_id: 'PAT-1001', full_name: 'Ramesh Sharma', name: 'Ramesh Sharma',
+                dob_estimated: '1968-04-12', sex: 'male', condition: 'cardiovascular', source: 'asha_pwa',
+                abha_id: 'ABHA-9821-4451', visit_count: 3,
+                latest_prediction: {
+                    risk_score: 0.284, risk_pct: 28.4, confidence: 'high',
+                    explanation: 'Elevated Systolic BP (148 mmHg) and Age (58) contribute to High Cardiovascular Risk (+18.2%)\nSmoking history increases 5-year risk (+6.5%)\nResting Heart Rate within normal range (-2.1%)',
+                    shap_values: [{ feature: 'Systolic BP (148)', impact: 0.182 }, { feature: 'Smoking History', impact: 0.065 }, { feature: 'Age (58)', impact: 0.048 }]
+                }
+            },
+            'PAT-1002': {
+                patient_id: 'PAT-1002', full_name: 'Sunita Devi', name: 'Sunita Devi',
+                dob_estimated: '1975-09-20', sex: 'female', condition: 'diabetes', source: 'asha_pwa',
+                abha_id: 'ABHA-6612-8890', visit_count: 2,
+                latest_prediction: {
+                    risk_score: 0.142, risk_pct: 14.2, confidence: 'high',
+                    explanation: 'Moderate glycemic index and BMI within borderline range.\nNormal blood pressure (-4.2%)',
+                    shap_values: [{ feature: 'Fasting Glucose (138)', impact: 0.088 }, { feature: 'BMI (26.4)', impact: 0.042 }]
+                }
+            },
+            'PAT-1003': {
+                patient_id: 'PAT-1003', full_name: 'Anil Verma', name: 'Anil Verma',
+                dob_estimated: '1982-11-05', sex: 'male', condition: 'hypertension', source: 'asha_pwa',
+                abha_id: 'ABHA-4190-2311', visit_count: 4,
+                latest_prediction: {
+                    risk_score: 0.076, risk_pct: 7.6, confidence: 'high',
+                    explanation: 'Low overall cardiovascular risk with well-controlled vitals.',
+                    shap_values: [{ feature: 'Controlled BP (120/78)', impact: -0.065 }]
+                }
+            }
+        };
+        if (demoMap[patientId.toUpperCase()]) {
+            patient = demoMap[patientId.toUpperCase()];
+        }
     }
 
     if (!patient) {

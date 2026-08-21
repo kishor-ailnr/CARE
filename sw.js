@@ -7,11 +7,12 @@
  *  - API calls        → Pass-through (let app.js handle with IndexedDB fallback)
  */
 
-const CACHE_NAME = 'care-app-shell-v16';
+const CACHE_NAME = 'care-app-shell-v18';
 const PHOTO_CACHE_NAME = 'care-doctor-photos-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './asha.html',
   './doctor.html',
   './patient.html',
   './bg-silk.png',
@@ -21,16 +22,17 @@ const ASSETS_TO_CACHE = [
   './app.js',
   './doctor_app.js',
   './doctor_patient_detail.js',
-  './db.js',
-  './manifest.json'
+  './db.js'
 ];
 
-// 1. Install event: Cache App Shell
+// 1. Install event: Cache App Shell safely
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
       console.log('[SW] Pre-caching CARE app shell assets');
-      return cache.addAll(ASSETS_TO_CACHE);
+      await Promise.allSettled(
+        ASSETS_TO_CACHE.map(url => cache.add(url).catch(err => console.warn('[SW] Cache add warning for', url, err)))
+      );
     }).then(() => self.skipWaiting())
   );
 });

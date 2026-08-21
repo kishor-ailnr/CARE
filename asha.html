@@ -6,7 +6,7 @@
   <title>CARE — ASHA Worker Dashboard</title>
 
   <!-- PWA Manifest & Theme -->
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href='data:application/manifest+json,{"name":"CARE — Clinical AI","short_name":"CARE","start_url":"./index.html","display":"standalone","background_color":"#0b0f1f","theme_color":"#0b0f1f"}' />
   <meta name="theme-color" content="#0b0f1f" />
   <meta name="description" content="CARE: ASHA Worker Clinical Platform." />
 
@@ -75,7 +75,7 @@
       const token = localStorage.getItem('care_access_token');
       const role = localStorage.getItem('care_role');
       if (!token || role !== 'asha_worker') {
-        window.location.href = '/';
+        window.location.href = 'index.html';
       }
     })();
   </script>
