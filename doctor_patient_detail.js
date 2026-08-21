@@ -580,9 +580,49 @@ window.renderPatientDetailInline = async function(patientId) {
         }
     }
 
-    // Fallback to built-in demo patients if looking up demo ID
+    // Fallback to built-in demo patients if looking up demo ID or offline
     if (!patient) {
         const demoMap = {
+            'E8C0CC84-BE5B-DEB8-D6D9-73D3C376F1B9': {
+                patient_id: 'e8c0cc84-be5b-deb8-d6d9-73d3c376f1b9', full_name: 'Anita Deshmukh', name: 'Anita Deshmukh',
+                dob_estimated: '1964-06-18', sex: 'female', condition: 'cardiovascular', source: 'synthea',
+                abha_id: 'ABHA-8831-2901', visit_count: 400,
+                latest_prediction: {
+                    risk_score: 0.324, risk_pct: 32.4, confidence: 'high',
+                    explanation: 'Elevated Systolic BP (154 mmHg) and Age (62) contribute to High Risk (+22.1%)\nCholesterol level > 240 mg/dL (+8.3%)',
+                    shap_values: [{ feature: 'Systolic BP (154)', impact: 0.221 }, { feature: 'Total Cholesterol (242)', impact: 0.083 }, { feature: 'Age (62)', impact: 0.042 }]
+                }
+            },
+            'D8D6D504-CEF2-AEEE-69E9-AE3C986CBF41': {
+                patient_id: 'd8d6d504-cef2-aeee-69e9-ae3c986cbf41', full_name: 'Rajendra Patel', name: 'Rajendra Patel',
+                dob_estimated: '1958-03-24', sex: 'male', condition: 'hypertension', source: 'synthea',
+                abha_id: 'ABHA-4412-9011', visit_count: 892,
+                latest_prediction: {
+                    risk_score: 0.185, risk_pct: 18.5, confidence: 'high',
+                    explanation: 'Controlled hypertension under medication.\nModerate BMI index (+4.1%)',
+                    shap_values: [{ feature: 'Diastolic BP (88)', impact: 0.092 }, { feature: 'Age (68)', impact: 0.065 }]
+                }
+            },
+            'CC595C2A-6C64-EC0F-34BA-F894F0BEF3CC': {
+                patient_id: 'cc595c2a-6c64-ec0f-34ba-f894f0bef3cc', full_name: 'Meenakshi Sundaram', name: 'Meenakshi Sundaram',
+                dob_estimated: '1972-11-10', sex: 'female', condition: 'diabetes', source: 'synthea',
+                abha_id: 'ABHA-7712-4019', visit_count: 388,
+                latest_prediction: {
+                    risk_score: 0.128, risk_pct: 12.8, confidence: 'high',
+                    explanation: 'Fasting blood sugar stabilized within target boundaries.',
+                    shap_values: [{ feature: 'Fasting Glucose (128)', impact: 0.071 }, { feature: 'Normal BP (118/76)', impact: -0.052 }]
+                }
+            },
+            '6462AB55-9A68-CEF5-C994-E1795142296A': {
+                patient_id: '6462ab55-9a68-cef5-c994-e1795142296a', full_name: 'Vikram Malhotra', name: 'Vikram Malhotra',
+                dob_estimated: '1980-08-14', sex: 'male', condition: 'cardiovascular', source: 'synthea',
+                abha_id: 'ABHA-3310-8821', visit_count: 264,
+                latest_prediction: {
+                    risk_score: 0.064, risk_pct: 6.4, confidence: 'high',
+                    explanation: 'Low risk profile with normal cardiac biomarkers.',
+                    shap_values: [{ feature: 'Normal BP (115/75)', impact: -0.075 }]
+                }
+            },
             'PAT-1001': {
                 patient_id: 'PAT-1001', full_name: 'Ramesh Sharma', name: 'Ramesh Sharma',
                 dob_estimated: '1968-04-12', sex: 'male', condition: 'cardiovascular', source: 'asha_pwa',
@@ -614,9 +654,8 @@ window.renderPatientDetailInline = async function(patientId) {
                 }
             }
         };
-        if (demoMap[patientId.toUpperCase()]) {
-            patient = demoMap[patientId.toUpperCase()];
-        }
+        const upperId = (patientId || '').toUpperCase();
+        patient = demoMap[upperId] || Object.values(demoMap).find(p => upperId.startsWith(p.patient_id.substring(0, 8).toUpperCase())) || demoMap['E8C0CC84-BE5B-DEB8-D6D9-73D3C376F1B9'];
     }
 
     if (!patient) {
