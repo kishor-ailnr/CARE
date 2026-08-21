@@ -1,24 +1,63 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/:match*", "destination": "https://care-backend-render.onrender.com/:match*" },
-    { "source": "/auth/:match*", "destination": "https://care-backend-render.onrender.com/auth/:match*" },
-    { "source": "/patients/:match*", "destination": "https://care-backend-render.onrender.com/patients/:match*" },
-    { "source": "/sync/:match*", "destination": "https://care-backend-render.onrender.com/sync/:match*" },
-    { "source": "/delegate-sync/:match*", "destination": "https://care-backend-render.onrender.com/delegate-sync/:match*" },
-    { "source": "/observations/:match*", "destination": "https://care-backend-render.onrender.com/observations/:match*" },
-    { "source": "/photos/:match*", "destination": "https://care-backend-render.onrender.com/photos/:match*" },
-    { "source": "/health", "destination": "https://care-backend-render.onrender.com/health" }
+    {
+      "source": "/api/:match*",
+      "destination": "https://https://care-backend-rtju.onrender.com/:match*"
+    },
+    {
+      "source": "/auth/:match*",
+      "destination": "https://https://care-backend-rtju.onrender.com/auth/:match*"
+    },
+    {
+      "source": "/patients/:match*",
+      "destination": "https://care-backend-rtju.onrender.com/:match*"
+    },
+    {
+      "source": "/sync/:match*",
+      "destination": "https://care-backend-rtju.onrender.com/sync/:match*"
+    },
+    {
+      "source": "/delegate-sync/:match*",
+      "destination": "https://care-backend-rtju.onrender.com/delegate-sync/:match*"
+    },
+    {
+      "source": "/observations/:match*",
+      "destination": "https://https://care-backend-rtju.onrender.com/observations/:match*"
+    },
+    {
+      "source": "/photos/:match*",
+      "destination": "https://care-backend-rtju.onrender.com/photos/:match*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://care-backend-rtju.onrender.com/health"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+        }
       ]
     }
   ]
